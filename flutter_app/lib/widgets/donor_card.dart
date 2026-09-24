@@ -123,10 +123,10 @@ class DonorCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              FilledButton.tonalIcon(
+              IconButton.filledTonal(
                 onPressed: donor.mobileNumber.isEmpty ? null : _call,
-                icon: const Icon(Icons.call_outlined, size: 19),
-                label: const Text('Call'),
+                icon: const Icon(Icons.call_outlined),
+                tooltip: 'Call donor',
               ),
               const SizedBox(width: 8),
               IconButton.filledTonal(
@@ -183,12 +183,16 @@ class _InfoBadge extends StatelessWidget {
       children: [
         Icon(icon, size: 17, color: foreground),
         const SizedBox(width: 6),
-        Text(
-          text,
-          style: TextStyle(
-            color: foreground,
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
+        Flexible(
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: foreground,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
       ],
