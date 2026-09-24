@@ -16,7 +16,6 @@ class AuthScreen extends StatefulWidget {
 class _AuthScreenState extends State<AuthScreen> {
   final _formKey = GlobalKey<FormState>();
   final _email = TextEditingController();
-  final _phone = TextEditingController();
   final _password = TextEditingController();
   final _confirmation = TextEditingController();
   final _otp = TextEditingController();
@@ -28,7 +27,6 @@ class _AuthScreenState extends State<AuthScreen> {
   @override
   void dispose() {
     _email.dispose();
-    _phone.dispose();
     _password.dispose();
     _confirmation.dispose();
     _otp.dispose();
@@ -43,7 +41,6 @@ class _AuthScreenState extends State<AuthScreen> {
       if (_register) {
         final debugOtp = await auth.requestRegistration(
           _email.text.trim().toLowerCase(),
-          _phone.text.trim(),
           _password.text,
           _confirmation.text,
         );
@@ -205,21 +202,6 @@ class _AuthScreenState extends State<AuthScreen> {
                           ? 'Enter a valid email address'
                           : null,
                     ),
-                    if (_register) ...[
-                      const SizedBox(height: 14),
-                      TextFormField(
-                        controller: _phone,
-                        keyboardType: TextInputType.phone,
-                        autofillHints: const [AutofillHints.telephoneNumber],
-                        decoration: const InputDecoration(
-                          labelText: 'Phone number',
-                          prefixIcon: Icon(Icons.phone_outlined),
-                        ),
-                        validator: (value) => (value?.trim().length ?? 0) < 10
-                            ? 'Enter a valid phone number'
-                            : null,
-                      ),
-                    ],
                     const SizedBox(height: 14),
                     TextFormField(
                       controller: _password,

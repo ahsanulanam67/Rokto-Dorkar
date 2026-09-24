@@ -68,7 +68,6 @@ class ApiService {
 
   Future<String?> requestRegistration(
     String email,
-    String phone,
     String password,
     String confirmation,
   ) async {
@@ -77,7 +76,6 @@ class ApiService {
         'auth/register/',
         data: {
           'email': email,
-          'phone_number': phone,
           'password': password,
           'confirm_password': confirmation,
         },
