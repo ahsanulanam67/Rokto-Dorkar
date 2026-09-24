@@ -3,7 +3,6 @@ from django.views.decorators.csrf import csrf_exempt
 from .models import *
 from django.contrib import messages
 import json
-import sys
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate,login,logout
 from django.contrib.auth.decorators import login_required
@@ -11,21 +10,22 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 from datetime import timedelta
 import random
-sys.path.append(r'E:\All Projects\Web Project\Rokto Dorkar\Blood_app')
-from country import country_data 
+from Blood_app.country import country_data
+from Accounts.services import OTPDeliveryError
+from Blood_app.api.serializers import RegistrationRequestSerializer, RegistrationVerifySerializer
 
 User = get_user_model()
 
 def login_page(request):
 
     if request.method == "POST":
-        phone_number = request.POST.get('phone_number')
+        email = request.POST.get('email', '').strip().lower()
         password = request.POST.get('password')
-        if not User.objects.filter(phone_number=phone_number).exists():
+        if not User.objects.filter(email__iexact=email).exists():
             messages.info(request,'User not exist')
             return redirect('login_page')
         
-        user = authenticate(phone_number = phone_number,password = password)
+        user = authenticate(email=email, password=password)
         # print('Kortamni')
         if user is None:
             messages.info(request,'Invalid Password')
@@ -46,21 +46,37 @@ def logout_page(request):
 
 def registration_page(request):
     if request.method == "POST":
-        phone_number = request.POST.get('phone_number')
-        password = request.POST.get('password')
-        user = User.objects.filter(phone_number = phone_number)
-        if user.exists():
-            messages.info(request,'Phone number already exists')
-            return redirect('registration_page')
-        user = User.objects.create(
-            phone_number = phone_number
-        )
-        user.set_password(password)
-        user.save()
-        messages.info(request,'User created successfully')
-        return redirect('login_page')
+        serializer = RegistrationRequestSerializer(data=request.POST)
+        if serializer.is_valid():
+            try:
+                serializer.save()
+            except OTPDeliveryError as exc:
+                messages.error(request, str(exc))
+            else:
+                context = {'email': serializer.validated_data['email']}
+                if getattr(serializer, 'debug_otp', None):
+                    messages.info(request, f"Development OTP: {serializer.debug_otp}")
+                return render(request, 'verify_otp_page.html', context)
+        else:
+            for errors in serializer.errors.values():
+                for error in errors:
+                    messages.error(request, error)
         
     return render(request,'registration_page.html')
+
+
+def verify_registration_page(request):
+    if request.method != 'POST':
+        return redirect('registration_page')
+    serializer = RegistrationVerifySerializer(data=request.POST)
+    if serializer.is_valid():
+        user = serializer.validated_data['user']
+        login(request, user)
+        return redirect('account_page')
+    for errors in serializer.errors.values():
+        for error in errors:
+            messages.error(request, error)
+    return render(request, 'verify_otp_page.html', {'email': request.POST.get('email', '')})
 
 @login_required(login_url="/login_page")
 def account_page(request):
@@ -71,6 +87,7 @@ def account_page(request):
         person_image = request.FILES.get('person_image')
         name = data.get('name')
         age =  data.get('age')
+        gender = data.get('gender')
         mobile_number = data.get('mobile_number')
         blood_group = data.get('blood_group')
         division  =  data.get('division')
@@ -81,6 +98,7 @@ def account_page(request):
           person.person_image = person_image
         person.name = name
         person.age = age
+        person.gender = gender
         person.mobile_number = mobile_number
         person.blood_group = blood_group
         person.division = division
@@ -133,4 +151,7 @@ def main_page(request):
 
     context = {'person': queryset, 'country': country_data}
     return render(request, 'main_page.html', context)
-       
+
+
+def about_page(request):
+    return render(request, 'about_page.html')

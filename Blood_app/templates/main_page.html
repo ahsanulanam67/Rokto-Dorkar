@@ -98,7 +98,15 @@
         </div>
         <div class="image_div">
 
-            <img class="personimg"src="/media/{{person.person_image}}" alt="{{person.name}}'s image">
+            {% if person.person_image %}
+              <img class="personimg" src="/media/{{person.person_image}}" alt="{{person.name}}'s image">
+            {% elif person.gender == "male" %}
+              <div class="personimg avatar-fallback" aria-label="Male donor">&#128104;</div>
+            {% elif person.gender == "female" %}
+              <div class="personimg avatar-fallback" aria-label="Female donor">&#128105;</div>
+            {% else %}
+              <div class="personimg avatar-fallback" aria-label="Donor">&#128100;</div>
+            {% endif %}
                 
         </div>
       

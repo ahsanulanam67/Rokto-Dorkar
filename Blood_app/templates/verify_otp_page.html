@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Verify email - Rokto Dorkar</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'style.css' %}" />
+  </head>
+  <body>
+    <div class="auth_section">
+      <form method="POST" action="{% url 'verify_registration' %}">
+        {% csrf_token %}
+        <div class="auth_container">
+          <h1>Verify Email</h1>
+          <p>Enter the six-digit code sent to {{ email }}.</p>
+          <input type="hidden" name="email" value="{{ email }}" />
+          <input type="text" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" class="auth_input" placeholder="Verification code" name="otp" required />
+          <button type="submit" class="auth_button">Verify</button>
+          {% if messages %}{% for message in messages %}<p>{{ message }}</p>{% endfor %}{% endif %}
+        </div>
+      </form>
+    </div>
+  </body>
+</html>

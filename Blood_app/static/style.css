@@ -250,6 +250,14 @@ body {
   transform: translateY(-4px);
 }
 
+.avatar-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffe2df;
+  font-size: 4rem;
+}
+
 .profile.even {
   border-left: 4px solid var(--primary);
 }
@@ -519,7 +527,7 @@ select.account_input:focus {
   align-items: center;
   background-color: var(--background);
   padding: 2rem;
-  background-image: url('/static/blood-donation-bg.jpg');
+  background-image: radial-gradient(circle at top, #ffe2df 0, transparent 55%);
   background-size: cover;
   background-position: center;
   background-blend-mode: overlay;

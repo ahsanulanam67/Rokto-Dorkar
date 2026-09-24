@@ -15,13 +15,13 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path
+from django.urls import include, path
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 
 # Import views from the Blood_app
-from Blood_app.views import account_page, main_page,login_page,registration_page,logout_page
+from Blood_app.views import account_page, about_page, main_page, login_page, registration_page, verify_registration_page, logout_page
 
 urlpatterns = [
     # Admin URL
@@ -33,6 +33,9 @@ urlpatterns = [
     path('login_page/',login_page,name="login_page"),
     path('logout_page/',logout_page,name="logout_page"),
     path('registration_page/',registration_page,name="registration_page"),
+    path('verify_registration/', verify_registration_page, name='verify_registration'),
+    path('about_page/', about_page, name='about_page'),
+    path('api/v1/', include('Blood_app.api.urls')),
     # path('about_page/',about_page,name='about_page')
     
 ]

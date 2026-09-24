@@ -1,120 +1,123 @@
 # Rokto Dorkar
 
-**Rokto Dorkar** is a web-based platform designed to manage blood donation needs. The platform connects blood donors with individuals in need of blood, making it easier for both parties to find and share life-saving blood. Built with **HTML**, **CSS**, **JavaScript**, and **Python Django**, the project aims to improve access to blood donation services.
-<!-- 
-## Demo
+Rokto Dorkar is a full-stack blood donor network for Bangladesh. This repository contains:
 
-For a visual demonstration of **Rokto Dorkar**, you can check out our video demo here:
-
-[Video Demo Link]
--->
+- a Django REST API and Django admin;
+- the original server-rendered Django website;
+- a Flutter app for Android, iOS, and web;
+- Neon PostgreSQL, Render, Cloudinary, and Vercel deployment configuration.
 
 ## Features
 
-### User Capabilities
+- Email registration with six-digit Brevo OTP verification and JWT login
+- User, moderator, and admin roles with server-enforced permissions
+- Donor profile, profile picture, contact details, blood group, and Bangladesh address
+- Available/unavailable donor status
+- Last-donation tracking and automatic 120-day eligibility calculation
+- Donor search by blood group, division, district, and upazila
+- OpenStreetMap/Nominatim geocoding and 30 km proximity search
+- Direct donor calling and map links
+- Create and browse urgent blood requests
+- Request owners can mark a request fulfilled
+- Responsive Flutter UI for mobile and web
+- Django admin for users, donors, and blood requests
 
+## Project structure
 
-- **Authentication**: Users can create accounts and log in to the platform.
-- **Donor Search**: Users can search for available blood donors based on blood type, location, and other criteria. The search is location-based, helping users find nearby donors. The platform uses **OpenStreetMap API** to extract the user's and donor's **longitude** and **latitude**, and calculates the distance between them. If the distance is within **30 km**, the donor is considered available.
-- **Donor Information**: Users can view the contact number of donors and see the location of the donor. 
- Donors also have profile pictures displayed along with their information.
-- **Donation History**: Users can view when a donor last donated blood, ensuring transparency and tracking of donations.
-- **Admin Panel**: Admins have the ability to manage users and monitor the entire platform.
-- **Request and Donation Status**: Users can check the availability of donations, providing real-time updates.
+```text
+Accounts/          Django email user, role, and OTP models
+Blood/             Django settings and root routes
+Blood_app/         Website, donor/request models, REST API
+flutter_app/       Flutter app (Android, iOS, web)
+render.yaml        Render Blueprint
+```
 
+## Run the backend locally
 
-## Technology Stack
+Python 3.12 is recommended.
 
-- **Frontend**: Developed with **HTML**, **CSS**, and **JavaScript**.
-- **Backend**: Built using **Python Django**.
-- **Database**: **SQLite** is used to store data.
-- **Authentication**: User authentication is handled by Django's built-in authentication system.
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
+python manage.py migrate
+python manage.py runserver
+```
 
-## Local Setup
+API health check: `http://127.0.0.1:8000/api/v1/health/`
 
-To get **Rokto Dorkar** up and running on your local machine, follow these instructions:
+API routes:
 
-### Prerequisites
+```text
+POST   /api/v1/auth/register/          Request email OTP
+POST   /api/v1/auth/register/verify/   Verify OTP and receive JWTs
+POST   /api/v1/auth/register/resend/   Resend OTP
+POST   /api/v1/auth/login/
+POST   /api/v1/auth/refresh/
+GET    /api/v1/profile/
+PATCH  /api/v1/profile/
+GET    /api/v1/donors/
+GET    /api/v1/locations/
+GET    /api/v1/requests/
+POST   /api/v1/requests/
+PATCH  /api/v1/requests/{id}/status/
+PATCH  /api/v1/donors/{id}/availability/  Moderator/admin only
+```
 
-Before setting up the project, make sure you have the following installed:
-- **Python 3.x**: Required to run the backend.
-- **pip**: Python package installer to install dependencies.
-- **SQLite**: Comes pre-installed with Python for database management.
-  
-### Steps
+## Run Flutter
 
-1. **Clone the Repository**:
-   
-   First, clone the repository to your local machine:
+```bash
+cd flutter_app
+flutter pub get
+flutter run --dart-define=API_BASE_URL=http://127.0.0.1:8000/api/v1/
+```
 
-   ```bash
-   git clone https://github.com/AhsanulAnam-Saboj/Rokto-Dorkar.git
-   cd Rokto-Dorkar
+For an Android emulator, use `http://10.0.2.2:8000/api/v1/`. A physical phone must use the computer's LAN address or a deployed HTTPS API.
 
-2. **Create and Activate a Virtual Environment**:
+## Deploy the API to Render with Neon
 
-   It is recommended to use a virtual environment to manage project dependencies. To create and activate the virtual environment, follow these steps:
+1. Create a Neon project and copy its pooled PostgreSQL connection string.
+2. In Render, create a Blueprint from this repository using `render.yaml`.
+3. Set the following Render environment variables:
 
-   - **On Windows**:
-     1. Open your command prompt or terminal in the project's directory.
-     2. Run the following command to create a virtual environment:
+```text
+DATABASE_URL=<Neon pooled connection string ending in sslmode=require>
+ALLOWED_HOSTS=<your-service>.onrender.com
+CORS_ALLOWED_ORIGINS=https://<your-flutter-site>.vercel.app
+CSRF_TRUSTED_ORIGINS=https://<your-service>.onrender.com,https://<your-flutter-site>.vercel.app
+CLOUDINARY_URL=cloudinary://<key>:<secret>@<cloud-name>
+BREVO_API_KEY=<your Brevo API key>
+BREVO_SENDER_EMAIL=<a sender verified by Brevo>
+BREVO_SENDER_NAME=Rokto Dorkar
+```
 
-        ```bash
-        python -m venv venv
-        ```
+Cloudinary is needed for durable profile pictures because Render's local filesystem is ephemeral. The application uses local media storage when `CLOUDINARY_URL` is absent.
 
-     3. To activate the virtual environment, run:
+The Brevo sender email must be verified before production OTP delivery works. In local `DEBUG=True` development without a Brevo key, the OTP is printed in the Django terminal and returned as `debug_otp` for testing.
 
-        ```bash
-        venv\Scripts\activate
-        ```
+Create an admin after the first deployment from a Render shell:
 
-   - **On macOS/Linux**:
-     1. Open your terminal in the project's directory.
-     2. Run the following command to create a virtual environment:
+```bash
+python manage.py createsuperuser
+```
 
-        ```bash
-        python3 -m venv venv
-        ```
+To promote a user to moderator, open Django admin, edit the user, and change the role to `Moderator`. Moderators can manage blood-request status and donor availability through the API and Flutter app. Only superusers receive unrestricted Django admin permissions.
 
-     3. To activate the virtual environment, run:
+## Deploy Flutter web to Vercel
 
-        ```bash
-        source venv/bin/activate
-        ```
+1. Import the repository in Vercel.
+2. Set the Root Directory to `flutter_app`.
+3. Add `API_BASE_URL=https://<your-service>.onrender.com/api/v1/`.
+4. Deploy. `flutter_app/vercel.json` builds Flutter web and configures SPA routing.
 
-   After activating the virtual environment, your terminal should show the name of the virtual environment (e.g., `(venv)`), indicating that it is active.
+## Build mobile releases
 
-   **Note**: If the virtual environment is active, all Python and pip commands will use the environment's packages instead of system-wide ones.
-3. **Install Dependencies**:
+```bash
+cd flutter_app
+flutter build apk --release --dart-define=API_BASE_URL=https://<your-service>.onrender.com/api/v1/
+flutter build appbundle --release --dart-define=API_BASE_URL=https://<your-service>.onrender.com/api/v1/
+flutter build ipa --release --dart-define=API_BASE_URL=https://<your-service>.onrender.com/api/v1/
+```
 
-   After activating the virtual environment, you need to install all the required dependencies for the project. To do this, run the following command in your terminal:
-
-   ```bash
-   pip install -r requirements.txt
-4.**Database Setup**:
-
-**Rokto Dorkar** uses **SQLite3**, which is Django's built-in database, to store user data, blood donation requests, and other relevant information. To set up the database, follow these steps:
-
-1. **Apply Migrations**: Django uses migrations to create the necessary database tables. To apply these migrations and set up the database, run the following command:
-
-   ```bash
-   python manage.py migrate
-
-
-5. **Start the Development Server**:
-
-   Once the dependencies are installed and the database is set up, you can start the development server to run the application locally. To start the server, use the following command:
-
-   ```bash
-   python manage.py runserver
-
-## Support and Contact
-
-If you encounter any issues or need assistance during setup or usage, feel free to reach out for help. Here are the options for support:
-
-- **Email**: For more direct communication, you can contact me at: [Mail](mailto:ahsanulanamsaboj1999@gmail.com).
-- **LinkedIn**: You can also connect with me on [LinkedIn](https://www.linkedin.com/in/ahsanulanam) for support or inquiries.
-
-Your feedback and contributions are highly appreciated!
-
+The iOS build requires Xcode signing. Play Store and App Store publishing credentials are not stored in this repository.
