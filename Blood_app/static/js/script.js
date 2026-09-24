@@ -17,11 +17,13 @@ function home_page(){
 
 }
 
-const country = JSON.parse(document.getElementById('country').textContent);
+const countryElement = document.getElementById('country');
+const country = countryElement ? JSON.parse(countryElement.textContent) : {};
 
 function updateDivision(){
 
       const divisionSelect = document.getElementById("division");
+      if (!divisionSelect) return;
 
       divisionSelect.innerHTML = "";
       for (division in country) {
@@ -94,6 +96,7 @@ document.addEventListener("DOMContentLoaded", function() {
 function updateAccountDivision(){
    
     const divisionSelect = document.getElementById("account_division");
+    if (!divisionSelect) return;
 
     divisionSelect.innerHTML = "";
     for (division in country) {

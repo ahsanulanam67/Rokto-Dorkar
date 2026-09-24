@@ -62,7 +62,7 @@ def registration_page(request):
                 for error in errors:
                     messages.error(request, error)
         
-    return render(request,'registration_page.html')
+    return render(request, 'registration_page.html', {'country': country_data})
 
 
 def verify_registration_page(request):

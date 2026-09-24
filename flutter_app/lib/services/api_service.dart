@@ -66,20 +66,9 @@ class ApiService {
     }
   }
 
-  Future<String?> requestRegistration(
-    String email,
-    String password,
-    String confirmation,
-  ) async {
+  Future<String?> requestRegistration(Map<String, dynamic> values) async {
     try {
-      final response = await _dio.post(
-        'auth/register/',
-        data: {
-          'email': email,
-          'password': password,
-          'confirm_password': confirmation,
-        },
-      );
+      final response = await _dio.post('auth/register/', data: values);
       return response.data['debug_otp'] as String?;
     } on DioException catch (error) {
       throw ApiException(_message(error));
@@ -203,6 +192,57 @@ class ApiService {
       _dio.patch('requests/$id/status/', data: {'status': value});
   Future<void> setDonorAvailability(int id, bool available) async =>
       _dio.patch('donors/$id/availability/', data: {'is_available': available});
+
+  Future<void> createManualDonor(Map<String, dynamic> values) async {
+    try {
+      await _dio.post('moderation/donors/', data: values);
+    } on DioException catch (error) {
+      throw ApiException(_message(error));
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> adminUsers() async {
+    try {
+      final data = (await _dio.get('admin/users/')).data;
+      final items = data is Map ? data['results'] as List : data as List;
+      return items
+          .map((item) => Map<String, dynamic>.from(item as Map))
+          .toList();
+    } on DioException catch (error) {
+      throw ApiException(_message(error));
+    }
+  }
+
+  Future<void> updateUserRole(int id, String role) async {
+    try {
+      await _dio.patch('admin/users/$id/role/', data: {'role': role});
+    } on DioException catch (error) {
+      throw ApiException(_message(error));
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> duplicateAlerts() async {
+    try {
+      final data = (await _dio.get('admin/duplicates/')).data;
+      final items = data is Map ? data['results'] as List : data as List;
+      return items
+          .map((item) => Map<String, dynamic>.from(item as Map))
+          .toList();
+    } on DioException catch (error) {
+      throw ApiException(_message(error));
+    }
+  }
+
+  Future<void> resolveDuplicate(int id, String resolution) async {
+    try {
+      await _dio.post(
+        'admin/duplicates/$id/resolve/',
+        data: {'resolution': resolution},
+      );
+    } on DioException catch (error) {
+      throw ApiException(_message(error));
+    }
+  }
 
   String _message(DioException error) {
     final data = error.response?.data;

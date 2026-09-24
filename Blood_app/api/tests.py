@@ -5,7 +5,7 @@ from django.test import override_settings
 from django.utils import timezone
 from rest_framework.test import APITestCase
 
-from Blood_app.models import BloodRequest, Person
+from Blood_app.models import BloodRequest, DuplicateDonorAlert, Person
 
 
 class ApiTests(APITestCase):
@@ -20,10 +20,16 @@ class ApiTests(APITestCase):
     @override_settings(DEBUG=True, BREVO_API_KEY="")
     def test_email_otp_registration(self):
         self.client.credentials()
+        Person.objects.create(
+            name="Manual New", gender="female", mobile_number="+8801900000000",
+            blood_group="B+", division="Dhaka", district="Dhaka", subdistrict="Savar",
+        )
         response = self.client.post(
             "/api/v1/auth/register/",
             {
-                "email": "new@example.com",
+                "email": "new@example.com", "phone_number": "01900000000",
+                "name": "New Member", "gender": "female", "blood_group": "B+",
+                "division": "Dhaka", "district": "Dhaka", "subdistrict": "Savar",
                 "password": "AnotherStrong!42", "confirm_password": "AnotherStrong!42",
             },
         )
@@ -31,7 +37,8 @@ class ApiTests(APITestCase):
         self.assertIn("debug_otp", response.data)
         user = get_user_model().objects.get(email="new@example.com")
         self.assertFalse(user.is_active)
-        self.assertIsNone(user.phone_number)
+        self.assertEqual(user.phone_number, "01900000000")
+        self.assertFalse(user.person.is_available)
 
         response = self.client.post(
             "/api/v1/auth/register/verify/",
@@ -41,6 +48,52 @@ class ApiTests(APITestCase):
         self.assertIn("access", response.data)
         user.refresh_from_db()
         self.assertTrue(user.email_verified)
+        user.person.refresh_from_db()
+        self.assertTrue(user.person.is_available)
+        self.assertEqual(DuplicateDonorAlert.objects.filter(registered_donor=user.person).count(), 1)
+
+    def test_admin_can_promote_moderator_and_resolve_manual_duplicate(self):
+        admin = get_user_model().objects.create_superuser(
+            email="admin@example.com", password="AdminStrong!42",
+        )
+        self.client.force_authenticate(admin)
+        response = self.client.patch(
+            f"/api/v1/admin/users/{self.user.id}/role/", {"role": "moderator"}, format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.role, "moderator")
+        Person.objects.create(
+            user=self.user, name="Registered Member", mobile_number="01700000000",
+            gender="male", blood_group="A+", division="Dhaka", district="Dhaka",
+            subdistrict="Savar",
+        )
+
+        self.client.force_authenticate(self.user)
+        response = self.client.post(
+            "/api/v1/moderation/donors/",
+            {
+                "name": "Manual Member", "mobile_number": "+8801700000000",
+                "gender": "male", "blood_group": "A+", "division": "Dhaka",
+                "district": "Dhaka", "subdistrict": "Savar", "is_available": True,
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 201)
+        alert = DuplicateDonorAlert.objects.get()
+        self.client.force_authenticate(admin)
+        response = self.client.get("/api/v1/admin/duplicates/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["results"][0]["manual_donor"]["created_by_email"], self.user.email)
+        response = self.client.post(
+            f"/api/v1/admin/duplicates/{alert.id}/resolve/",
+            {"resolution": "delete_manual"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+        alert.refresh_from_db()
+        self.assertEqual(alert.status, DuplicateDonorAlert.Status.RESOLVED)
+        self.assertIsNone(alert.manual_donor)
 
     def test_profile_and_eligible_nearby_donor_search(self):
         donor_user = get_user_model().objects.create_user(
