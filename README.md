@@ -18,6 +18,7 @@ Rokto Dorkar is a full-stack blood donor network for Bangladesh. This repository
 - Available/unavailable donor status
 - Last-donation tracking and automatic 120-day eligibility calculation
 - Donor search by blood group, division, district, and upazila
+- Current Bangladesh administrative coverage: 8 divisions, 64 districts, and 500 upazilas (September 2026)
 - OpenStreetMap/Nominatim geocoding and 30 km proximity search
 - Direct donor calling and map links
 - Create and browse urgent blood requests

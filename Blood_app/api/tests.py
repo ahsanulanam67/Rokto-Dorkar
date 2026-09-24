@@ -17,6 +17,19 @@ class ApiTests(APITestCase):
         response = self.client.post("/api/v1/auth/login/", {"email": "member@example.com", "password": "StrongPass!42"})
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {response.data['access']}")
 
+    def test_current_bangladesh_location_coverage(self):
+        response = self.client.get("/api/v1/locations/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), 8)
+        self.assertEqual(sum(len(districts) for districts in response.data.values()), 64)
+        self.assertEqual(
+            sum(len(upazilas) for districts in response.data.values() for upazilas in districts.values()),
+            500,
+        )
+        self.assertIn("Mokamtola", response.data["Rajshahi"]["Bogura"])
+        self.assertIn("Matamuhuri", response.data["Chattogram"]["Cox's Bazar"])
+        self.assertIn("Bhulli", response.data["Rangpur"]["Thakurgaon"])
+
     @override_settings(DEBUG=True, BREVO_API_KEY="")
     def test_email_otp_registration(self):
         self.client.credentials()
