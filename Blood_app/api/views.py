@@ -170,25 +170,24 @@ class DonorListView(generics.ListAPIView):
         blood_group = params.get("blood_group")
         if blood_group:
             queryset = queryset.filter(blood_group=blood_group)
-        for field in ("division", "district", "subdistrict"):
-            value = params.get(field)
-            if value and value.upper() != "ALL":
-                queryset = queryset.filter(**{f"{field}__iexact": value})
-
-        if params.get("eligible_only", "true").lower() != "false":
-            cutoff = timezone.localdate() - timezone.timedelta(days=120)
-            queryset = queryset.filter(is_available=True).filter(Q(lastdonate__isnull=True) | Q(lastdonate__lte=cutoff))
 
         try:
             latitude, longitude = float(params["latitude"]), float(params["longitude"])
         except (KeyError, TypeError, ValueError):
             latitude = longitude = None
-        has_specific_location = any(
-            params.get(key) and params.get(key).upper() != "ALL"
-            for key in ("division", "district", "subdistrict")
-        )
-        if latitude is None and has_specific_location:
-            latitude, longitude = geocode(params.get("division"), params.get("district"), params.get("subdistrict"))
+
+        # A radius search is purely geographic so it can cross upazila,
+        # district, and division borders. Administrative filters are used only
+        # when the caller has not supplied a position.
+        if latitude is None or longitude is None:
+            for field in ("division", "district", "subdistrict"):
+                value = params.get(field)
+                if value and value.upper() != "ALL":
+                    queryset = queryset.filter(**{f"{field}__iexact": value})
+
+        if params.get("eligible_only", "true").lower() != "false":
+            cutoff = timezone.localdate() - timezone.timedelta(days=120)
+            queryset = queryset.filter(is_available=True).filter(Q(lastdonate__isnull=True) | Q(lastdonate__lte=cutoff))
 
         donors = list(queryset.order_by("-updated_at")[:500])
         if latitude is not None and longitude is not None:

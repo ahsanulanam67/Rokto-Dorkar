@@ -164,16 +164,21 @@ class _DonorsScreenState extends State<DonorsScreen> {
                   onDivisionChanged: (value) => setSheetState(() {
                     division = value;
                     district = subdistrict = null;
+                    radiusKm = null;
                   }),
                   onDistrictChanged: (value) => setSheetState(() {
                     district = value;
                     subdistrict = null;
+                    radiusKm = null;
                   }),
-                  onSubdistrictChanged: (value) =>
-                      setSheetState(() => subdistrict = value),
+                  onSubdistrictChanged: (value) => setSheetState(() {
+                    subdistrict = value;
+                    radiusKm = null;
+                  }),
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<int>(
+                  key: ValueKey('radius-${radiusKm ?? 0}'),
                   initialValue: radiusKm ?? 0,
                   decoration: const InputDecoration(
                     labelText: 'Distance from me',
@@ -189,8 +194,12 @@ class _DonorsScreenState extends State<DonorsScreen> {
                     DropdownMenuItem(value: 50, child: Text('Within 50 km')),
                     DropdownMenuItem(value: 100, child: Text('Within 100 km')),
                   ],
-                  onChanged: (value) =>
-                      setSheetState(() => radiusKm = value == 0 ? null : value),
+                  onChanged: (value) => setSheetState(() {
+                    radiusKm = value == 0 ? null : value;
+                    if (radiusKm != null) {
+                      division = district = subdistrict = null;
+                    }
+                  }),
                 ),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
@@ -208,10 +217,11 @@ class _DonorsScreenState extends State<DonorsScreen> {
                     _filters = <String, dynamic>{
                       'eligible_only': eligible.toString(),
                       'blood_group': ?group,
-                      'division': ?division,
-                      'district': ?district,
-                      'subdistrict': ?subdistrict,
-                      if (position != null) ...{
+                      if (position == null) ...{
+                        'division': ?division,
+                        'district': ?district,
+                        'subdistrict': ?subdistrict,
+                      } else ...{
                         'latitude': position.latitude,
                         'longitude': position.longitude,
                         'radius_km': radiusKm,

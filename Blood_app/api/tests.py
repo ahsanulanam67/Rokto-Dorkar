@@ -123,6 +123,25 @@ class ApiTests(APITestCase):
         self.assertEqual(response.data["count"], 1)
         self.assertTrue(response.data["results"][0]["eligible_to_donate"])
 
+    def test_radius_search_crosses_administrative_borders(self):
+        nearby = Person.objects.create(
+            name="Nearby across border", age=30, gender="female",
+            mobile_number="01099999999", blood_group="AB-",
+            division="Chattogram", district="Cumilla",
+            subdistrict="Cumilla Adarsha Sadar", lastdonate=None,
+            latitude=23.81, longitude=90.41, is_available=True,
+        )
+        response = self.client.get(
+            "/api/v1/donors/",
+            {
+                "blood_group": "AB-", "division": "Dhaka",
+                "district": "Dhaka", "subdistrict": "Savar",
+                "latitude": 23.81, "longitude": 90.41, "radius_km": 5,
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(nearby.id, [item["id"] for item in response.data["results"]])
+
     def test_profile_accepts_never_donated(self):
         response = self.client.patch(
             "/api/v1/profile/",
