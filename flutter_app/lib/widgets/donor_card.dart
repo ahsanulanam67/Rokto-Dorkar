@@ -104,13 +104,19 @@ class DonorCard extends StatelessWidget {
                       : 'Available ${donor.nextAvailableDate == null ? 'later' : DateFormat.MMMd().format(donor.nextAvailableDate!)}',
                 ),
               ),
-              if (donor.lastDonated != null)
-                Chip(
-                  avatar: const Icon(Icons.history, size: 18),
-                  label: Text(
-                    'Last: ${DateFormat.yMMMd().format(donor.lastDonated!)}',
-                  ),
+              Chip(
+                avatar: Icon(
+                  donor.lastDonated == null
+                      ? Icons.volunteer_activism_outlined
+                      : Icons.history,
+                  size: 18,
                 ),
+                label: Text(
+                  donor.lastDonated == null
+                      ? 'Never donated'
+                      : 'Last donated ${DateFormat.yMMMd().format(donor.lastDonated!)}',
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 8),
