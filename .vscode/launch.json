@@ -1,0 +1,41 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Flutter Web (Chrome + Render API)",
+      "request": "launch",
+      "type": "dart",
+      "cwd": "flutter_app",
+      "program": "lib/main.dart",
+      "deviceId": "chrome",
+      "toolArgs": [
+        "--web-port=8080",
+        "--dart-define=API_BASE_URL=https://rokto-dorkar.onrender.com/api/v1/"
+      ]
+    },
+    {
+      "name": "Flutter Web Release (no debugger)",
+      "request": "launch",
+      "type": "dart",
+      "cwd": "flutter_app",
+      "program": "lib/main.dart",
+      "deviceId": "chrome",
+      "flutterMode": "release",
+      "toolArgs": [
+        "--web-port=8080",
+        "--dart-define=API_BASE_URL=https://rokto-dorkar.onrender.com/api/v1/"
+      ]
+    },
+    {
+      "name": "Flutter macOS (Render API)",
+      "request": "launch",
+      "type": "dart",
+      "cwd": "flutter_app",
+      "program": "lib/main.dart",
+      "deviceId": "macos",
+      "toolArgs": [
+        "--dart-define=API_BASE_URL=https://rokto-dorkar.onrender.com/api/v1/"
+      ]
+    }
+  ]
+}
