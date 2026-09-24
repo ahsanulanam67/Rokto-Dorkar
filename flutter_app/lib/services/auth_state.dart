@@ -23,11 +23,8 @@ class AuthState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<String?> requestRegistration(
-    String email,
-    String password,
-    String confirmation,
-  ) => api.requestRegistration(email, password, confirmation);
+  Future<String?> requestRegistration(Map<String, dynamic> values) =>
+      api.requestRegistration(values);
 
   Future<void> verifyRegistration(String email, String otp) async {
     role = await api.verifyRegistration(email, otp);

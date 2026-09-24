@@ -16,6 +16,35 @@
           <br><br><br>
           <input type="email" class="auth_input" placeholder="Enter email address" name="email" id="email" required /><br />
 
+          <input type="text" class="auth_input" placeholder="Full name" name="name" required /><br />
+
+          <input type="tel" class="auth_input" placeholder="Mobile number (01XXXXXXXXX)" name="phone_number" required /><br />
+
+          <select name="gender" class="auth_input" required>
+            <option value="" disabled selected>Select gender</option>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+            <option value="other">Other / prefer not to say</option>
+          </select><br />
+
+          <select name="blood_group" class="auth_input" required>
+            <option value="" disabled selected>Select blood group</option>
+            <option>A+</option><option>A-</option><option>B+</option><option>B-</option>
+            <option>O+</option><option>O-</option><option>AB+</option><option>AB-</option>
+          </select><br />
+
+          <select name="division" id="division" class="auth_input" required>
+            <option value="" disabled selected>Select division</option>
+          </select><br />
+
+          <select name="district" id="district" class="auth_input" required>
+            <option value="" disabled selected>Select district</option>
+          </select><br />
+
+          <select name="subdistrict" id="subdistrict" class="auth_input" required>
+            <option value="" disabled selected>Select subdistrict</option>
+          </select><br />
+
           <input type="password" class="auth_input" placeholder="Create password" name="password" id="password" required /><br />
 
           <input type="password" class="auth_input" placeholder="Confirm password" name="confirm_password" id="confirm_password" required /><br />
@@ -34,6 +63,7 @@
         </div>
       </form>
     </div>
+    {{ country|json_script:'country' }}
     <script type="text/javascript" src="{% static 'js/script.js' %}"></script>
   </body>
 </html>

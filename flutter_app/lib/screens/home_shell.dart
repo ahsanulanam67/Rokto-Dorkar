@@ -2,8 +2,12 @@ import 'package:flutter/material.dart';
 
 import 'about_screen.dart';
 import 'donors_screen.dart';
+import 'management_screen.dart';
 import 'profile_screen.dart';
 import 'requests_screen.dart';
+import '../services/auth_state.dart';
+
+import 'package:provider/provider.dart';
 
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
@@ -13,21 +17,24 @@ class HomeShell extends StatefulWidget {
 
 class _HomeShellState extends State<HomeShell> {
   int _index = 0;
-  static const _screens = [
-    DonorsScreen(),
-    RequestsScreen(),
-    ProfileScreen(),
-    AboutScreen(),
-  ];
-  static const _titles = [
-    'Find donors',
-    'Blood requests',
-    'My profile',
-    'About',
-  ];
-
   @override
   Widget build(BuildContext context) {
+    final canModerate = context.watch<AuthState>().canModerate;
+    final screens = <Widget>[
+      const DonorsScreen(),
+      const RequestsScreen(),
+      const ProfileScreen(),
+      if (canModerate) const ManagementScreen(),
+      const AboutScreen(),
+    ];
+    final titles = <String>[
+      'Find donors',
+      'Blood requests',
+      'My profile',
+      if (canModerate) 'Management',
+      'About',
+    ];
+    if (_index >= screens.length) _index = 0;
     final wide = MediaQuery.sizeOf(context).width >= 800;
     final navigation = NavigationRail(
       selectedIndex: _index,
@@ -37,20 +44,25 @@ class _HomeShellState extends State<HomeShell> {
         padding: EdgeInsets.all(12),
         child: Icon(Icons.bloodtype_rounded, size: 42),
       ),
-      destinations: const [
-        NavigationRailDestination(
+      destinations: [
+        const NavigationRailDestination(
           icon: Icon(Icons.search),
           label: Text('Donors'),
         ),
-        NavigationRailDestination(
+        const NavigationRailDestination(
           icon: Icon(Icons.emergency_outlined),
           label: Text('Requests'),
         ),
-        NavigationRailDestination(
+        const NavigationRailDestination(
           icon: Icon(Icons.person_outline),
           label: Text('Profile'),
         ),
-        NavigationRailDestination(
+        if (canModerate)
+          const NavigationRailDestination(
+            icon: Icon(Icons.admin_panel_settings_outlined),
+            label: Text('Manage'),
+          ),
+        const NavigationRailDestination(
           icon: Icon(Icons.info_outline),
           label: Text('About'),
         ),
@@ -59,7 +71,7 @@ class _HomeShellState extends State<HomeShell> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          _titles[_index],
+          titles[_index],
           style: const TextStyle(fontWeight: FontWeight.w800),
         ),
       ),
@@ -67,7 +79,7 @@ class _HomeShellState extends State<HomeShell> {
         children: [
           if (wide) navigation,
           Expanded(
-            child: IndexedStack(index: _index, children: _screens),
+            child: IndexedStack(index: _index, children: screens),
           ),
         ],
       ),
@@ -76,20 +88,25 @@ class _HomeShellState extends State<HomeShell> {
           : NavigationBar(
               selectedIndex: _index,
               onDestinationSelected: (value) => setState(() => _index = value),
-              destinations: const [
-                NavigationDestination(
+              destinations: [
+                const NavigationDestination(
                   icon: Icon(Icons.search),
                   label: 'Donors',
                 ),
-                NavigationDestination(
+                const NavigationDestination(
                   icon: Icon(Icons.emergency_outlined),
                   label: 'Requests',
                 ),
-                NavigationDestination(
+                const NavigationDestination(
                   icon: Icon(Icons.person_outline),
                   label: 'Profile',
                 ),
-                NavigationDestination(
+                if (canModerate)
+                  const NavigationDestination(
+                    icon: Icon(Icons.admin_panel_settings_outlined),
+                    label: 'Manage',
+                  ),
+                const NavigationDestination(
                   icon: Icon(Icons.info_outline),
                   label: 'About',
                 ),

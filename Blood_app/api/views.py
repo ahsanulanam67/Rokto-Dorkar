@@ -1,7 +1,9 @@
 from math import asin, cos, radians, sin, sqrt
 
 import requests
+from django.contrib.auth import get_user_model
 from django.db.models import Q
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import generics, permissions, status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
@@ -12,16 +14,24 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 
 from Accounts.services import OTPDeliveryError, OTPCooldownError, issue_email_otp
 from Blood_app.country import country_data
-from Blood_app.models import BloodRequest, Person
+from Blood_app.duplicates import create_duplicate_alerts
+from Blood_app.models import BloodRequest, DuplicateDonorAlert, Person
+from Blood_app.phones import normalize_phone
 from .serializers import (
     BloodRequestSerializer,
     DonorAvailabilitySerializer,
     EmailTokenObtainPairSerializer,
+    DuplicateDonorAlertSerializer,
+    ManualDonorSerializer,
     PersonSerializer,
     RegistrationRequestSerializer,
     RegistrationVerifySerializer,
     ResendOTPSerializer,
+    RoleUpdateSerializer,
+    UserRoleSerializer,
 )
+
+User = get_user_model()
 
 
 def geocode(division, district, subdistrict):
@@ -81,7 +91,11 @@ class VerifyRegistrationView(APIView):
     def post(self, request):
         serializer = RegistrationVerifySerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        return Response(auth_payload(serializer.validated_data["user"]))
+        data = auth_payload(serializer.validated_data["user"])
+        duplicate_count = serializer.validated_data.get("duplicate_alerts_created", 0)
+        if duplicate_count:
+            data["notice"] = "A matching donor record was found. An administrator will review it."
+        return Response(data)
 
 
 class ResendOTPView(APIView):
@@ -109,6 +123,15 @@ class EmailTokenObtainPairView(TokenObtainPairView):
 class IsModerator(permissions.BasePermission):
     def has_permission(self, request, view):
         return bool(request.user and request.user.is_authenticated and request.user.can_moderate)
+
+
+class IsAdmin(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return bool(
+            request.user
+            and request.user.is_authenticated
+            and (request.user.is_superuser or request.user.role == "admin")
+        )
 
 
 class DonorAvailabilityView(generics.UpdateAPIView):
@@ -139,7 +162,11 @@ class DonorListView(generics.ListAPIView):
 
     def get_queryset(self):
         params = self.request.query_params
-        queryset = Person.objects.exclude(name__isnull=True).exclude(name="")
+        queryset = (
+            Person.objects.exclude(name__isnull=True)
+            .exclude(name="")
+            .filter(Q(user__isnull=True) | Q(user__is_active=True))
+        )
         blood_group = params.get("blood_group")
         if blood_group:
             queryset = queryset.filter(blood_group=blood_group)
@@ -178,6 +205,85 @@ class DonorListView(generics.ListAPIView):
                     nearby.append(donor)
             donors = sorted(nearby, key=lambda donor: donor.distance_km)
         return donors[:200]
+
+
+class ManualDonorCreateView(generics.CreateAPIView):
+    serializer_class = ManualDonorSerializer
+    permission_classes = (IsModerator,)
+
+    def perform_create(self, serializer):
+        donor = serializer.save(user=None, created_by=self.request.user)
+        latitude, longitude = geocode(donor.division, donor.district, donor.subdistrict)
+        if latitude is not None:
+            donor.latitude, donor.longitude = latitude, longitude
+            donor.save(update_fields=("latitude", "longitude", "updated_at"))
+
+        phone = normalize_phone(donor.mobile_number)
+        for registered in Person.objects.filter(user__isnull=False).select_related("user"):
+            if registered.user.is_active and normalize_phone(registered.mobile_number) == phone:
+                create_duplicate_alerts(registered)
+
+
+class UserListView(generics.ListAPIView):
+    serializer_class = UserRoleSerializer
+    permission_classes = (IsAdmin,)
+
+    def get_queryset(self):
+        queryset = User.objects.all().order_by("email")
+        search = self.request.query_params.get("search", "").strip()
+        if search:
+            queryset = queryset.filter(Q(email__icontains=search) | Q(phone_number__icontains=search))
+        return queryset
+
+
+class UserRoleUpdateView(APIView):
+    permission_classes = (IsAdmin,)
+
+    def patch(self, request, pk):
+        target = get_object_or_404(User, pk=pk)
+        if target.is_superuser or target.role == "admin":
+            return Response({"detail": "Administrator roles cannot be changed here."}, status=400)
+        serializer = RoleUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        target.role = serializer.validated_data["role"]
+        target.save(update_fields=("role",))
+        return Response(UserRoleSerializer(target).data)
+
+
+class DuplicateAlertListView(generics.ListAPIView):
+    serializer_class = DuplicateDonorAlertSerializer
+    permission_classes = (IsAdmin,)
+
+    def get_queryset(self):
+        return DuplicateDonorAlert.objects.filter(
+            status=DuplicateDonorAlert.Status.PENDING,
+        ).select_related("registered_donor__user", "manual_donor")
+
+
+class DuplicateAlertResolveView(APIView):
+    permission_classes = (IsAdmin,)
+
+    def post(self, request, pk):
+        alert = get_object_or_404(
+            DuplicateDonorAlert,
+            pk=pk,
+            status=DuplicateDonorAlert.Status.PENDING,
+        )
+        resolution = request.data.get("resolution")
+        if resolution == "delete_manual":
+            manual_donor = alert.manual_donor
+            alert.status = DuplicateDonorAlert.Status.RESOLVED
+            if manual_donor:
+                manual_donor.delete()
+                alert.manual_donor = None
+        elif resolution == "dismiss":
+            alert.status = DuplicateDonorAlert.Status.DISMISSED
+        else:
+            return Response({"resolution": "Choose delete_manual or dismiss."}, status=400)
+        alert.resolved_at = timezone.now()
+        alert.resolved_by = request.user
+        alert.save(update_fields=("manual_donor", "status", "resolved_at", "resolved_by"))
+        return Response(DuplicateDonorAlertSerializer(alert, context={"request": request}).data)
 
 
 class BloodRequestViewSet(viewsets.ModelViewSet):

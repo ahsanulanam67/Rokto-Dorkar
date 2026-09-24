@@ -9,8 +9,11 @@ Rokto Dorkar is a full-stack blood donor network for Bangladesh. This repository
 
 ## Features
 
-- Email registration with six-digit Brevo OTP verification and JWT login
+- Email registration with required donor name, phone, blood group, gender, Bangladesh address, six-digit Brevo OTP verification, and JWT login
 - User, moderator, and admin roles with server-enforced permissions
+- Admin role management and moderator/admin creation of donors without accounts
+- Phone-normalized duplicate alerts when a manually added donor later creates an account
+- Admin review to delete the manual duplicate or dismiss an incorrect match
 - Donor profile, profile picture, contact details, blood group, and Bangladesh address
 - Available/unavailable donor status
 - Last-donation tracking and automatic 120-day eligibility calculation
@@ -63,6 +66,11 @@ GET    /api/v1/requests/
 POST   /api/v1/requests/
 PATCH  /api/v1/requests/{id}/status/
 PATCH  /api/v1/donors/{id}/availability/  Moderator/admin only
+POST   /api/v1/moderation/donors/          Moderator/admin only
+GET    /api/v1/admin/users/                Admin only
+PATCH  /api/v1/admin/users/{id}/role/      Admin only
+GET    /api/v1/admin/duplicates/           Admin only
+POST   /api/v1/admin/duplicates/{id}/resolve/ Admin only
 ```
 
 ## Run Flutter
@@ -102,7 +110,7 @@ Create an admin after the first deployment from a Render shell:
 python manage.py createsuperuser
 ```
 
-To promote a user to moderator, open Django admin, edit the user, and change the role to `Moderator`. Moderators can manage blood-request status and donor availability through the API and Flutter app. Only superusers receive unrestricted Django admin permissions.
+Administrators can promote users to moderators from the Flutter Management area or Django admin. Moderators can add donors without accounts and manage donor availability. When that donor later registers with the same normalized phone number, the Flutter Management area alerts administrators, who can delete the manually created record or dismiss the match.
 
 ## Deploy Flutter web to Vercel
 

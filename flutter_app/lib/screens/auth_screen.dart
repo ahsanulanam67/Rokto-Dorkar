@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../core/constants.dart';
 import '../core/theme.dart';
 import '../services/api_service.dart';
 import '../services/auth_state.dart';
+import '../widgets/location_fields.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -16,6 +18,8 @@ class AuthScreen extends StatefulWidget {
 class _AuthScreenState extends State<AuthScreen> {
   final _formKey = GlobalKey<FormState>();
   final _email = TextEditingController();
+  final _name = TextEditingController();
+  final _phone = TextEditingController();
   final _password = TextEditingController();
   final _confirmation = TextEditingController();
   final _otp = TextEditingController();
@@ -23,10 +27,33 @@ class _AuthScreenState extends State<AuthScreen> {
   bool _awaitingOtp = false;
   bool _busy = false;
   bool _obscure = true;
+  bool _requestedLocations = false;
+  Map<String, dynamic> _locations = {};
+  String? _gender, _bloodGroup, _division, _district, _subdistrict;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_requestedLocations) {
+      _requestedLocations = true;
+      _loadLocations();
+    }
+  }
+
+  Future<void> _loadLocations() async {
+    try {
+      final locations = await context.read<ApiService>().locations();
+      if (mounted) setState(() => _locations = locations);
+    } catch (_) {
+      // Login remains available; registration will ask the user to retry.
+    }
+  }
 
   @override
   void dispose() {
     _email.dispose();
+    _name.dispose();
+    _phone.dispose();
     _password.dispose();
     _confirmation.dispose();
     _otp.dispose();
@@ -35,15 +62,27 @@ class _AuthScreenState extends State<AuthScreen> {
 
   Future<void> _submitCredentials() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_register &&
+        (_division == null || _district == null || _subdistrict == null)) {
+      _showMessage('Choose your division, district, and subdistrict.');
+      return;
+    }
     setState(() => _busy = true);
     try {
       final auth = context.read<AuthState>();
       if (_register) {
-        final debugOtp = await auth.requestRegistration(
-          _email.text.trim().toLowerCase(),
-          _password.text,
-          _confirmation.text,
-        );
+        final debugOtp = await auth.requestRegistration({
+          'email': _email.text.trim().toLowerCase(),
+          'phone_number': _phone.text.trim(),
+          'name': _name.text.trim(),
+          'gender': _gender,
+          'blood_group': _bloodGroup,
+          'division': _division,
+          'district': _district,
+          'subdistrict': _subdistrict,
+          'password': _password.text,
+          'confirm_password': _confirmation.text,
+        });
         if (mounted) {
           setState(() => _awaitingOtp = true);
           _showMessage(
@@ -226,6 +265,116 @@ class _AuthScreenState extends State<AuthScreen> {
                     if (_register) ...[
                       const SizedBox(height: 14),
                       TextFormField(
+                        controller: _name,
+                        textCapitalization: TextCapitalization.words,
+                        decoration: const InputDecoration(
+                          labelText: 'Full name',
+                          prefixIcon: Icon(Icons.badge_outlined),
+                        ),
+                        validator: (value) => value?.trim().isEmpty ?? true
+                            ? 'Enter your name'
+                            : null,
+                      ),
+                      const SizedBox(height: 14),
+                      TextFormField(
+                        controller: _phone,
+                        keyboardType: TextInputType.phone,
+                        autofillHints: const [AutofillHints.telephoneNumber],
+                        decoration: const InputDecoration(
+                          labelText: 'Mobile number',
+                          hintText: '01XXXXXXXXX',
+                          prefixIcon: Icon(Icons.phone_outlined),
+                        ),
+                        validator: (value) {
+                          final digits = (value ?? '').replaceAll(
+                            RegExp(r'\D'),
+                            '',
+                          );
+                          return digits.length < 10
+                              ? 'Enter a valid mobile number'
+                              : null;
+                        },
+                      ),
+                      const SizedBox(height: 14),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              initialValue: _bloodGroup,
+                              decoration: const InputDecoration(
+                                labelText: 'Blood group',
+                              ),
+                              items: bloodGroups
+                                  .map(
+                                    (value) => DropdownMenuItem(
+                                      value: value,
+                                      child: Text(value),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: (value) =>
+                                  setState(() => _bloodGroup = value),
+                              validator: (value) =>
+                                  value == null ? 'Required' : null,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              initialValue: _gender,
+                              decoration: const InputDecoration(
+                                labelText: 'Gender',
+                              ),
+                              items: const [
+                                DropdownMenuItem(
+                                  value: 'male',
+                                  child: Text('Male'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'female',
+                                  child: Text('Female'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'other',
+                                  child: Text('Other'),
+                                ),
+                              ],
+                              onChanged: (value) =>
+                                  setState(() => _gender = value),
+                              validator: (value) =>
+                                  value == null ? 'Required' : null,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      if (_locations.isEmpty)
+                        OutlinedButton.icon(
+                          onPressed: _loadLocations,
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('Load locations'),
+                        )
+                      else
+                        LocationFields(
+                          locations: _locations,
+                          division: _division,
+                          district: _district,
+                          subdistrict: _subdistrict,
+                          onDivisionChanged: (value) => setState(() {
+                            _division = value;
+                            _district = _subdistrict = null;
+                          }),
+                          onDistrictChanged: (value) => setState(() {
+                            _district = value;
+                            _subdistrict = null;
+                          }),
+                          onSubdistrictChanged: (value) =>
+                              setState(() => _subdistrict = value),
+                        ),
+                    ],
+                    if (_register) ...[
+                      const SizedBox(height: 14),
+                      TextFormField(
                         controller: _confirmation,
                         obscureText: true,
                         decoration: const InputDecoration(
@@ -239,7 +388,9 @@ class _AuthScreenState extends State<AuthScreen> {
                     ],
                     const SizedBox(height: 24),
                     FilledButton(
-                      onPressed: _busy ? null : _submitCredentials,
+                      onPressed: _busy || (_register && _locations.isEmpty)
+                          ? null
+                          : _submitCredentials,
                       child: _busy
                           ? const SizedBox.square(
                               dimension: 22,
