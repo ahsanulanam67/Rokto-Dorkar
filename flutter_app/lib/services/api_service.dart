@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -48,6 +51,7 @@ class ApiService {
 
   final Dio _dio;
   static const _storage = FlutterSecureStorage();
+  Map<String, dynamic>? _cachedLocations;
 
   Future<bool> get isSignedIn async =>
       await _storage.read(key: 'refresh_token') != null;
@@ -168,8 +172,21 @@ class ApiService {
         .toList();
   }
 
-  Future<Map<String, dynamic>> locations() async =>
-      Map<String, dynamic>.from((await _dio.get('locations/')).data as Map);
+  Future<Map<String, dynamic>> locations() async {
+    if (_cachedLocations != null) return _cachedLocations!;
+    try {
+      final json = await rootBundle.loadString(
+        'assets/data/bangladesh_locations.json',
+      );
+      return _cachedLocations = Map<String, dynamic>.from(
+        jsonDecode(json) as Map,
+      );
+    } catch (_) {
+      return _cachedLocations = Map<String, dynamic>.from(
+        (await _dio.get('locations/')).data as Map,
+      );
+    }
+  }
 
   Future<List<BloodRequest>> requests({bool mine = false}) async {
     final response = await _dio.get(
