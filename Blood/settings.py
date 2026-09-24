@@ -16,7 +16,10 @@ def env_list(name, default=""):
     return [item.strip() for item in os.getenv(name, default).split(",") if item.strip()]
 
 
-ALLOWED_HOSTS = env_list("ALLOWED_HOSTS", ".onrender.com,localhost,127.0.0.1")
+ALLOWED_HOSTS = env_list("ALLOWED_HOSTS")
+for deployment_host in (os.getenv("RENDER_EXTERNAL_HOSTNAME"), ".onrender.com", "localhost", "127.0.0.1"):
+    if deployment_host and deployment_host not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(deployment_host)
 CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS")
 CORS_ALLOWED_ORIGINS = env_list("CORS_ALLOWED_ORIGINS")
 CORS_ALLOW_ALL_ORIGINS = DEBUG and not CORS_ALLOWED_ORIGINS
