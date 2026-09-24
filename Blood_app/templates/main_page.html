@@ -1,4 +1,4 @@
-5<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -11,18 +11,18 @@
 <body>
     <!-- The sidebar -->
     <div class="appbar">
-        <button id="appbar_icon_button" onclick="home()">
+        <button id="appbar_icon_button" onclick="home_page()">
         <img id="appbar_icon" src="/static/icon.png" alt="Rokto Dorkar">
         </button>
-        <h1>Rokto Dorkar</h1>*79-
+        <h1>Rokto Dorkar</h1>
     </div> 
 <div class="maindiv">
    
     <div class="sidebar">
-        <a href="">Home</a>
-        <a href="/profile">Account</a>
-        <a href="/about">About</a>
-        <a href="/logout/" >Log Out</a>
+        <a href="/main_page">Home</a>
+        <a href="/account_page">Account</a>
+        <a href="/about_page">About</a>
+        <a href="/logout_page/" >Log Out</a>
     </div>
       
       <!-- Page content -->
@@ -36,7 +36,7 @@
             <a class="cancel_search" href="" >
             <div class="cancel_search">
                     <img class="cancel_search" src="/static/cancel_icon.png" alt="">
- 56                   
+                    
                 </div>
             </a>
 
@@ -54,7 +54,8 @@
                           <option value="AB+">AB+</option>
                           <option value="AB-">AB-</option>
                         </select>
-                        <br> 
+                        <br>
+    
                         <label for="Division">Division:</label>
                         <select class="search_input" name="division" id="division">
                             
@@ -97,7 +98,15 @@
         </div>
         <div class="image_div">
 
-            <img class="personimg"src="/media/{{person.person_image}}" alt="{{person.name}}'s image">
+            {% if person.person_image %}
+              <img class="personimg" src="/media/{{person.person_image}}" alt="{{person.name}}'s image">
+            {% elif person.gender == "male" %}
+              <div class="personimg avatar-fallback" aria-label="Male donor">&#128104;</div>
+            {% elif person.gender == "female" %}
+              <div class="personimg avatar-fallback" aria-label="Female donor">&#128105;</div>
+            {% else %}
+              <div class="personimg avatar-fallback" aria-label="Donor">&#128100;</div>
+            {% endif %}
                 
         </div>
       

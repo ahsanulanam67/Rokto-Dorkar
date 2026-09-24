@@ -14,11 +14,13 @@
         <div class="auth_container">
           <h1>Signup</h1>
           <br><br><br>
+          <input type="email" class="auth_input" placeholder="Enter email address" name="email" id="email" required /><br />
+
           <input type="text" class="auth_input" placeholder="Enter mobile number" name="phone_number" id="phone_number" required /><br />
 
           <input type="password" class="auth_input" placeholder="Create password" name="password" id="password" required /><br />
 
-          <input type="password" class="auth_input" placeholder="Confirm password" name="re_password" id="re_password" required /><br />
+          <input type="password" class="auth_input" placeholder="Confirm password" name="confirm_password" id="confirm_password" required /><br />
            
           <button type="submit" class="auth_button">Register</button>
           {% if messages %}
@@ -28,7 +30,7 @@
           {% endif %}
           <div class="container signin">
             <p>
-              Already have an account? <a href="/login">Sign in</a>.
+              Already have an account? <a href="/login_page">Sign in</a>.
             </p>
           </div>
         </div>

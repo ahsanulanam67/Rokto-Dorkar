@@ -5,23 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     {% load static %}
     <link rel="stylesheet" href="{% static 'style.css' %}" />
-    <title>Profile</title>
+    <title>Account - Rokto Dorkar</title>
    
   </head>
   <body>
     <!-- The sidebar -->
     <div class="appbar">
-      <button id="appbar_icon_button" onclick="home()">
+      <button id="appbar_icon_button" onclick="home_page()">
         <img id="appbar_icon" src="/static/icon.png" alt="Rokto Dorkar" />
       </button>
       <h1>Rokto Dorkar</h1>
     </div>
     <div class="maindiv">
       <div class="sidebar">
-        <a href="">Home</a>
-        <a class="active" href="/profile">Account</a>
-        <a href="/about">About</a>
-        <a href="/logout/" >Log Out</a>
+        <a href="/main_page">Home</a>
+        <a class="active" href="/account_page">Account</a>
+        <a href="/about_page">About</a>
+        <a href="/logout_page/" >Log Out</a>
       </div>
 
       <!-- Page content -->
@@ -47,6 +47,14 @@
 
             <label for="age">Age</label>
             <input type="number" class="account_input" id="age" name="age" placeholder="ex: 24" value="{{ person.age|default_if_none:'' }}" required />
+
+            <label for="gender">Gender</label>
+            <select name="gender" class="account_input" id="gender" required>
+              <option value="" disabled {% if not person.gender %}selected{% endif %}>Select gender</option>
+              <option value="male" {% if person.gender == "male" %}selected{% endif %}>Male</option>
+              <option value="female" {% if person.gender == "female" %}selected{% endif %}>Female</option>
+              <option value="other" {% if person.gender == "other" %}selected{% endif %}>Other / prefer not to say</option>
+            </select>
 
             <label for="blood_group">Blood Group</label>
             <select name="blood_group" class="account_input" id="blood_group" required>
@@ -111,6 +119,11 @@
             <label for="Blood Group">Blood Group</label>
             <div class="account_input">
               <p>{{ person.blood_group }}</p>
+            </div>
+
+            <label for="Gender">Gender</label>
+            <div class="account_input">
+              <p>{{ person.get_gender_display|default_if_none:"Not set" }}</p>
             </div>
 
             <label for="Contact">Contact</label>
