@@ -27,13 +27,6 @@ class _HomeShellState extends State<HomeShell> {
       if (canModerate) const ManagementScreen(),
       const AboutScreen(),
     ];
-    final titles = <String>[
-      'Find donors',
-      'Blood requests',
-      'My profile',
-      if (canModerate) 'Management',
-      'About',
-    ];
     if (_index >= screens.length) _index = 0;
     final wide = MediaQuery.sizeOf(context).width >= 800;
     final navigation = NavigationRail(
@@ -71,9 +64,13 @@ class _HomeShellState extends State<HomeShell> {
     );
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          titles[_index],
-          style: const TextStyle(fontWeight: FontWeight.w800),
+        title: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.bloodtype_rounded),
+            SizedBox(width: 8),
+            Text('Rokto Dorkar', style: TextStyle(fontWeight: FontWeight.w800)),
+          ],
         ),
       ),
       body: Row(
