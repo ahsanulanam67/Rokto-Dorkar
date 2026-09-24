@@ -23,7 +23,7 @@ class ApiTests(APITestCase):
         response = self.client.post(
             "/api/v1/auth/register/",
             {
-                "email": "new@example.com", "phone_number": "01900000000",
+                "email": "new@example.com",
                 "password": "AnotherStrong!42", "confirm_password": "AnotherStrong!42",
             },
         )
@@ -31,6 +31,7 @@ class ApiTests(APITestCase):
         self.assertIn("debug_otp", response.data)
         user = get_user_model().objects.get(email="new@example.com")
         self.assertFalse(user.is_active)
+        self.assertIsNone(user.phone_number)
 
         response = self.client.post(
             "/api/v1/auth/register/verify/",
