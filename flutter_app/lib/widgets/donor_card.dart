@@ -93,29 +93,29 @@ class DonorCard extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: [
-              Chip(
-                avatar: Icon(
-                  donor.eligible ? Icons.check_circle : Icons.schedule,
-                  size: 18,
-                ),
-                label: Text(
-                  donor.eligible
-                      ? 'Eligible now'
-                      : 'Available ${donor.nextAvailableDate == null ? 'later' : DateFormat.MMMd().format(donor.nextAvailableDate!)}',
-                ),
+              _InfoBadge(
+                icon: donor.eligible
+                    ? Icons.check_circle_rounded
+                    : Icons.schedule_rounded,
+                text: donor.eligible
+                    ? 'Ready to donate'
+                    : 'Available ${donor.nextAvailableDate == null ? 'later' : DateFormat.MMMd().format(donor.nextAvailableDate!)}',
+                foreground: donor.eligible
+                    ? const Color(0xFF207A45)
+                    : const Color(0xFF8A5A12),
+                background: donor.eligible
+                    ? const Color(0xFFEAF7EF)
+                    : const Color(0xFFFFF4DF),
               ),
-              Chip(
-                avatar: Icon(
-                  donor.lastDonated == null
-                      ? Icons.volunteer_activism_outlined
-                      : Icons.history,
-                  size: 18,
-                ),
-                label: Text(
-                  donor.lastDonated == null
-                      ? 'Never donated'
-                      : 'Last donated ${DateFormat.yMMMd().format(donor.lastDonated!)}',
-                ),
+              _InfoBadge(
+                icon: donor.lastDonated == null
+                    ? Icons.volunteer_activism_outlined
+                    : Icons.history_rounded,
+                text: donor.lastDonated == null
+                    ? 'Never donated'
+                    : 'Last donated ${DateFormat.yMMMd().format(donor.lastDonated!)}',
+                foreground: const Color(0xFF6B4D4A),
+                background: const Color(0xFFFFF2F0),
               ),
             ],
           ),
@@ -154,6 +154,44 @@ class DonorCard extends StatelessWidget {
           ],
         ],
       ),
+    ),
+  );
+}
+
+class _InfoBadge extends StatelessWidget {
+  const _InfoBadge({
+    required this.icon,
+    required this.text,
+    required this.foreground,
+    required this.background,
+  });
+
+  final IconData icon;
+  final String text;
+  final Color foreground;
+  final Color background;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+    decoration: BoxDecoration(
+      color: background,
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 17, color: foreground),
+        const SizedBox(width: 6),
+        Text(
+          text,
+          style: TextStyle(
+            color: foreground,
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
     ),
   );
 }

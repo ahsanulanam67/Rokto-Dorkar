@@ -72,7 +72,15 @@ class _DonorsScreenState extends State<DonorsScreen> {
     }
   }
 
-  Future<void> _nearMe() async {
+  Future<Position?> _currentPosition() async {
+    if (!await Geolocator.isLocationServiceEnabled()) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Turn on location services first.')),
+        );
+      }
+      return null;
+    }
     var permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
@@ -86,16 +94,9 @@ class _DonorsScreenState extends State<DonorsScreen> {
           ),
         );
       }
-      return;
+      return null;
     }
-    final location = await Geolocator.getCurrentPosition();
-    _filters = {
-      'latitude': location.latitude,
-      'longitude': location.longitude,
-      'radius_km': 30,
-      'eligible_only': 'true',
-    };
-    await _load();
+    return Geolocator.getCurrentPosition();
   }
 
   Future<void> _toggleAvailability(Donor donor) async {
@@ -119,6 +120,7 @@ class _DonorsScreenState extends State<DonorsScreen> {
     String? district = _filters['district'] as String?;
     String? subdistrict = _filters['subdistrict'] as String?;
     bool eligible = _filters['eligible_only'] != 'false';
+    int? radiusKm = (_filters['radius_km'] as num?)?.round();
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -170,6 +172,26 @@ class _DonorsScreenState extends State<DonorsScreen> {
                   onSubdistrictChanged: (value) =>
                       setSheetState(() => subdistrict = value),
                 ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<int>(
+                  initialValue: radiusKm ?? 0,
+                  decoration: const InputDecoration(
+                    labelText: 'Distance from me',
+                    prefixIcon: Icon(Icons.near_me_outlined),
+                    helperText: 'Uses your current location when selected',
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 0, child: Text('Any distance')),
+                    DropdownMenuItem(value: 5, child: Text('Within 5 km')),
+                    DropdownMenuItem(value: 10, child: Text('Within 10 km')),
+                    DropdownMenuItem(value: 20, child: Text('Within 20 km')),
+                    DropdownMenuItem(value: 30, child: Text('Within 30 km')),
+                    DropdownMenuItem(value: 50, child: Text('Within 50 km')),
+                    DropdownMenuItem(value: 100, child: Text('Within 100 km')),
+                  ],
+                  onChanged: (value) =>
+                      setSheetState(() => radiusKm = value == 0 ? null : value),
+                ),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   title: const Text('Only eligible and available donors'),
@@ -178,16 +200,26 @@ class _DonorsScreenState extends State<DonorsScreen> {
                 ),
                 const SizedBox(height: 10),
                 FilledButton(
-                  onPressed: () {
-                    _filters = {
+                  onPressed: () async {
+                    final position = radiusKm == null
+                        ? null
+                        : await _currentPosition();
+                    if (radiusKm != null && position == null) return;
+                    _filters = <String, dynamic>{
                       'eligible_only': eligible.toString(),
                       'blood_group': ?group,
                       'division': ?division,
                       'district': ?district,
                       'subdistrict': ?subdistrict,
+                      if (position != null) ...{
+                        'latitude': position.latitude,
+                        'longitude': position.longitude,
+                        'radius_km': radiusKm,
+                      },
                     };
+                    if (!sheetContext.mounted) return;
                     Navigator.pop(sheetContext);
-                    _load();
+                    await _load();
                   },
                   child: const Text('Search'),
                 ),
@@ -220,16 +252,8 @@ class _DonorsScreenState extends State<DonorsScreen> {
                 Expanded(
                   child: FilledButton.tonalIcon(
                     onPressed: _showFilters,
-                    icon: const Icon(Icons.tune),
-                    label: const Text('Filter donors'),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _nearMe,
-                    icon: const Icon(Icons.near_me),
-                    label: const Text('Within 30 km'),
+                    icon: const Icon(Icons.manage_search_rounded),
+                    label: const Text('Search and filter donors'),
                   ),
                 ),
               ],
