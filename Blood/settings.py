@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
-SECRET_KEY = os.getenv("SECRET_KEY", "unsafe-development-key-change-me")
+SECRET_KEY = os.getenv("SECRET_KEY") or os.getenv("DJANGO_SECRET_KEY") or "unsafe-development-key-change-me"
 DEBUG = os.getenv("DEBUG", "True").lower() in {"1", "true", "yes"}
 
 
@@ -66,7 +66,7 @@ TEMPLATES = [{
 WSGI_APPLICATION = "Blood.wsgi.application"
 
 DATABASES = {"default": dj_database_url.config(
-    default=os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR / 'db.sqlite3'}"),
+    default=os.getenv("DATABASE_URL") or os.getenv("RENDER_EXTERNAL_DATABASE_URL") or f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
     conn_max_age=600,
     conn_health_checks=True,
     ssl_require=os.getenv("DATABASE_SSL", "False").lower() in {"1", "true", "yes"},
