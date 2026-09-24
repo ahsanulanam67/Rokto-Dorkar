@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 
 import '../core/constants.dart';
@@ -72,33 +71,6 @@ class _DonorsScreenState extends State<DonorsScreen> {
     }
   }
 
-  Future<Position?> _currentPosition() async {
-    if (!await Geolocator.isLocationServiceEnabled()) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Turn on location services first.')),
-        );
-      }
-      return null;
-    }
-    var permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-    }
-    if (permission == LocationPermission.denied ||
-        permission == LocationPermission.deniedForever) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Location permission is needed for nearby donors.'),
-          ),
-        );
-      }
-      return null;
-    }
-    return Geolocator.getCurrentPosition();
-  }
-
   Future<void> _toggleAvailability(Donor donor) async {
     try {
       await context.read<ApiService>().setDonorAvailability(
@@ -120,7 +92,6 @@ class _DonorsScreenState extends State<DonorsScreen> {
     String? district = _filters['district'] as String?;
     String? subdistrict = _filters['subdistrict'] as String?;
     bool eligible = _filters['eligible_only'] != 'false';
-    int? radiusKm = (_filters['radius_km'] as num?)?.round();
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -164,42 +135,13 @@ class _DonorsScreenState extends State<DonorsScreen> {
                   onDivisionChanged: (value) => setSheetState(() {
                     division = value;
                     district = subdistrict = null;
-                    radiusKm = null;
                   }),
                   onDistrictChanged: (value) => setSheetState(() {
                     district = value;
                     subdistrict = null;
-                    radiusKm = null;
                   }),
-                  onSubdistrictChanged: (value) => setSheetState(() {
-                    subdistrict = value;
-                    radiusKm = null;
-                  }),
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<int>(
-                  key: ValueKey('radius-${radiusKm ?? 0}'),
-                  initialValue: radiusKm ?? 0,
-                  decoration: const InputDecoration(
-                    labelText: 'Distance from me',
-                    prefixIcon: Icon(Icons.near_me_outlined),
-                    helperText: 'Uses your current location when selected',
-                  ),
-                  items: const [
-                    DropdownMenuItem(value: 0, child: Text('Any distance')),
-                    DropdownMenuItem(value: 5, child: Text('Within 5 km')),
-                    DropdownMenuItem(value: 10, child: Text('Within 10 km')),
-                    DropdownMenuItem(value: 20, child: Text('Within 20 km')),
-                    DropdownMenuItem(value: 30, child: Text('Within 30 km')),
-                    DropdownMenuItem(value: 50, child: Text('Within 50 km')),
-                    DropdownMenuItem(value: 100, child: Text('Within 100 km')),
-                  ],
-                  onChanged: (value) => setSheetState(() {
-                    radiusKm = value == 0 ? null : value;
-                    if (radiusKm != null) {
-                      division = district = subdistrict = null;
-                    }
-                  }),
+                  onSubdistrictChanged: (value) =>
+                      setSheetState(() => subdistrict = value),
                 ),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
@@ -210,22 +152,12 @@ class _DonorsScreenState extends State<DonorsScreen> {
                 const SizedBox(height: 10),
                 FilledButton(
                   onPressed: () async {
-                    final position = radiusKm == null
-                        ? null
-                        : await _currentPosition();
-                    if (radiusKm != null && position == null) return;
                     _filters = <String, dynamic>{
                       'eligible_only': eligible.toString(),
                       'blood_group': ?group,
-                      if (position == null) ...{
-                        'division': ?division,
-                        'district': ?district,
-                        'subdistrict': ?subdistrict,
-                      } else ...{
-                        'latitude': position.latitude,
-                        'longitude': position.longitude,
-                        'radius_km': radiusKm,
-                      },
+                      'division': ?division,
+                      'district': ?district,
+                      'subdistrict': ?subdistrict,
                     };
                     if (!sheetContext.mounted) return;
                     Navigator.pop(sheetContext);
@@ -249,6 +181,35 @@ class _DonorsScreenState extends State<DonorsScreen> {
     );
   }
 
+  bool get _hasVisibleFilters =>
+      _filters['blood_group'] != null || _selectedLocation != null;
+
+  String? get _selectedLocation {
+    final parts = [
+      _filters['subdistrict'],
+      _filters['district'],
+      _filters['division'],
+    ].whereType<String>().where((value) => value != 'ALL').toList();
+    return parts.isEmpty ? null : parts.join(', ');
+  }
+
+  Future<void> _removeBloodFilter() async {
+    _filters.remove('blood_group');
+    await _load();
+  }
+
+  Future<void> _removeLocationFilter() async {
+    _filters.remove('division');
+    _filters.remove('district');
+    _filters.remove('subdistrict');
+    await _load();
+  }
+
+  Future<void> _clearVisibleFilters() async {
+    _filters = {'eligible_only': _filters['eligible_only'] ?? 'true'};
+    await _load();
+  }
+
   @override
   Widget build(BuildContext context) => RefreshIndicator(
     onRefresh: _load,
@@ -270,6 +231,35 @@ class _DonorsScreenState extends State<DonorsScreen> {
             ),
           ),
         ),
+        if (_hasVisibleFilters)
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 2, 16, 8),
+            sliver: SliverToBoxAdapter(
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  if (_filters['blood_group'] case final String group)
+                    InputChip(
+                      avatar: const Icon(Icons.bloodtype_outlined, size: 18),
+                      label: Text('Blood: $group'),
+                      onDeleted: _removeBloodFilter,
+                    ),
+                  if (_selectedLocation case final String location)
+                    InputChip(
+                      avatar: const Icon(Icons.location_on_outlined, size: 18),
+                      label: Text(location),
+                      onDeleted: _removeLocationFilter,
+                    ),
+                  TextButton(
+                    onPressed: _clearVisibleFilters,
+                    child: const Text('Clear all'),
+                  ),
+                ],
+              ),
+            ),
+          ),
         if (_loading)
           const SliverFillRemaining(
             child: Center(child: CircularProgressIndicator()),

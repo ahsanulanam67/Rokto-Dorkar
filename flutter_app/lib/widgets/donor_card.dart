@@ -18,18 +18,6 @@ class DonorCard extends StatelessWidget {
 
   Future<void> _call() =>
       launchUrl(Uri(scheme: 'tel', path: donor.mobileNumber));
-  Future<void> _map() {
-    final query = donor.latitude != null
-        ? '${donor.latitude},${donor.longitude}'
-        : '${donor.subdistrict}, ${donor.district}, Bangladesh';
-    return launchUrl(
-      Uri.https('www.google.com', '/maps/search/', {
-        'api': '1',
-        'query': query,
-      }),
-      mode: LaunchMode.externalApplication,
-    );
-  }
 
   @override
   Widget build(BuildContext context) => Card(
@@ -89,6 +77,31 @@ class DonorCard extends StatelessWidget {
             ],
           ),
           const Divider(height: 26),
+          Row(
+            children: [
+              const Icon(
+                Icons.phone_outlined,
+                size: 19,
+                color: Color(0xFF6B4D4A),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  donor.mobileNumber.isEmpty
+                      ? 'Phone number unavailable'
+                      : donor.mobileNumber,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
+              if (donor.mobileNumber.isNotEmpty)
+                IconButton.filledTonal(
+                  onPressed: _call,
+                  icon: const Icon(Icons.call_outlined),
+                  tooltip: 'Call donor',
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -116,23 +129,6 @@ class DonorCard extends StatelessWidget {
                     : 'Last donated ${DateFormat.yMMMd().format(donor.lastDonated!)}',
                 foreground: const Color(0xFF6B4D4A),
                 background: const Color(0xFFFFF2F0),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              IconButton.filledTonal(
-                onPressed: donor.mobileNumber.isEmpty ? null : _call,
-                icon: const Icon(Icons.call_outlined),
-                tooltip: 'Call donor',
-              ),
-              const SizedBox(width: 8),
-              IconButton.filledTonal(
-                onPressed: _map,
-                icon: const Icon(Icons.map_outlined),
-                tooltip: 'Open location',
               ),
             ],
           ),

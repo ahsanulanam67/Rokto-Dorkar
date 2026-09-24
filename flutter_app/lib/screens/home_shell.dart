@@ -46,8 +46,9 @@ class _HomeShellState extends State<HomeShell> {
       ),
       destinations: [
         const NavigationRailDestination(
-          icon: Icon(Icons.search),
-          label: Text('Donors'),
+          icon: Icon(Icons.home_outlined),
+          selectedIcon: Icon(Icons.home_rounded),
+          label: Text('Home'),
         ),
         const NavigationRailDestination(
           icon: Icon(Icons.emergency_outlined),
@@ -90,8 +91,9 @@ class _HomeShellState extends State<HomeShell> {
               onDestinationSelected: (value) => setState(() => _index = value),
               destinations: [
                 const NavigationDestination(
-                  icon: Icon(Icons.search),
-                  label: 'Donors',
+                  icon: Icon(Icons.home_outlined),
+                  selectedIcon: Icon(Icons.home_rounded),
+                  label: 'Home',
                 ),
                 const NavigationDestination(
                   icon: Icon(Icons.emergency_outlined),

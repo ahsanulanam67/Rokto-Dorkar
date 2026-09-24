@@ -35,7 +35,7 @@ class AboutScreen extends StatelessWidget {
       const _AboutTile(
         icon: Icons.search,
         title: 'Search donors',
-        text: 'Find eligible donors by blood group, location, or a distance radius you choose.',
+        text: 'Find eligible donors by blood group and location.',
       ),
       const _AboutTile(
         icon: Icons.phone,

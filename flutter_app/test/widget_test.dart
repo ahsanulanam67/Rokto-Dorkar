@@ -93,5 +93,7 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(find.byTooltip('Call donor'), findsOneWidget);
+    expect(find.text('01000000001'), findsOneWidget);
+    expect(find.byTooltip('Open location'), findsNothing);
   });
 }
