@@ -30,7 +30,6 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "cloudinary",
-    "cloudinary_storage",
     "django.contrib.staticfiles",
     "corsheaders",
     "rest_framework",
@@ -93,10 +92,6 @@ STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
 }
-# django-cloudinary-storage 0.3.0 still reads this legacy setting from its
-# collectstatic command. Django 5 uses STORAGES above, but keeping the alias
-# prevents the third-party command from raising AttributeError during builds.
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 if os.getenv("CLOUDINARY_URL"):
     STORAGES["default"] = {"BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage"}
 
