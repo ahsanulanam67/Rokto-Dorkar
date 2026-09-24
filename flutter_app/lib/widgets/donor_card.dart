@@ -121,15 +121,14 @@ class DonorCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Row(
+            mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: donor.mobileNumber.isEmpty ? null : _call,
-                  icon: const Icon(Icons.call),
-                  label: const Text('Call donor'),
-                ),
+              FilledButton.tonalIcon(
+                onPressed: donor.mobileNumber.isEmpty ? null : _call,
+                icon: const Icon(Icons.call_outlined, size: 19),
+                label: const Text('Call'),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               IconButton.filledTonal(
                 onPressed: _map,
                 icon: const Icon(Icons.map_outlined),
