@@ -78,10 +78,10 @@ POST   /api/v1/admin/duplicates/{id}/resolve/ Admin only
 ```bash
 cd flutter_app
 flutter pub get
-flutter run --dart-define=API_BASE_URL=http://127.0.0.1:8000/api/v1/
+flutter run
 ```
 
-For an Android emulator, use `http://10.0.2.2:8000/api/v1/`. A physical phone must use the computer's LAN address or a deployed HTTPS API.
+The app uses the deployed Render API by default. To develop against a local backend, override it with `--dart-define=API_BASE_URL=http://127.0.0.1:8000/api/v1/`. For an Android emulator, use `http://10.0.2.2:8000/api/v1/`.
 
 ## Deploy the API to Render with Neon
 
