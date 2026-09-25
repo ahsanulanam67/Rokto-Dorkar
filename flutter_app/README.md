@@ -1,17 +1,34 @@
-# rokto_dorkar_app
+# Rokto Dorkar Flutter app
 
-A new Flutter project.
+The Flutter client for the [Rokto Dorkar](../README.md) blood donor network. It targets Android, iOS, and web and connects to the deployed Django REST API by default.
 
-## Getting Started
+## Run
 
-This project is a starting point for a Flutter application.
+```bash
+flutter pub get
+flutter run -d chrome
+```
 
-A few resources to get you started if this is your first Flutter project:
+Use a different API during development with `--dart-define`:
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+```bash
+flutter run --dart-define=API_BASE_URL=http://127.0.0.1:8000/api/v1/
+```
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Android emulators must use `http://10.0.2.2:8000/api/v1/` to reach a backend running on the host computer.
+
+## Check quality
+
+```bash
+flutter analyze
+flutter test
+```
+
+## Build
+
+```bash
+flutter build apk --release --build-name=1.0.0 --build-number=1
+flutter build web --release
+```
+
+See the root README for features, architecture, security, deployment, and environment configuration.

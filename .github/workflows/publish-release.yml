@@ -1,0 +1,27 @@
+name: Publish Android release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    name: Publish APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@v4
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh release create "$GITHUB_REF_NAME"
+          releases/Rokto-Dorkar-v1.0.apk
+          releases/SHA256SUMS.txt
+          --title "Rokto Dorkar v1.0.0"
+          --notes-file releases/RELEASE_NOTES.md
