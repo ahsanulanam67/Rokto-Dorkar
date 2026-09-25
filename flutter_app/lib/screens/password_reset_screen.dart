@@ -44,16 +44,12 @@ class _PasswordResetScreenState extends State<PasswordResetScreen> {
     if (!_codeSent && !(_emailKey.currentState?.validate() ?? false)) return;
     setState(() => _busy = true);
     try {
-      final debugOtp = await context.read<ApiService>().requestPasswordReset(
+      await context.read<ApiService>().requestPasswordReset(
         _email.text.trim().toLowerCase(),
       );
       if (mounted) {
         setState(() => _codeSent = true);
-        _message(
-          debugOtp == null
-              ? 'If this email has an active account, a reset code was sent.'
-              : 'Development OTP: $debugOtp',
-        );
+        _message('If this email has an active account, a reset code was sent.');
       }
     } on ApiException catch (error) {
       if (mounted) _message(error.message);

@@ -72,7 +72,7 @@ class _AuthScreenState extends State<AuthScreen> {
     try {
       final auth = context.read<AuthState>();
       if (_register) {
-        final debugOtp = await auth.requestRegistration({
+        await auth.requestRegistration({
           'email': _email.text.trim().toLowerCase(),
           'phone_number': _phone.text.trim(),
           'name': _name.text.trim(),
@@ -86,11 +86,7 @@ class _AuthScreenState extends State<AuthScreen> {
         });
         if (mounted) {
           setState(() => _awaitingOtp = true);
-          _showMessage(
-            debugOtp == null
-                ? 'We sent a verification code to your email.'
-                : 'Development OTP: $debugOtp',
-          );
+          _showMessage('We sent a verification code to your email.');
         }
       } else {
         await auth.login(_email.text.trim().toLowerCase(), _password.text);
@@ -123,15 +119,11 @@ class _AuthScreenState extends State<AuthScreen> {
   Future<void> _resendOtp() async {
     setState(() => _busy = true);
     try {
-      final debugOtp = await context.read<AuthState>().resendRegistrationOTP(
+      await context.read<AuthState>().resendRegistrationOTP(
         _email.text.trim().toLowerCase(),
       );
       if (mounted) {
-        _showMessage(
-          debugOtp == null
-              ? 'A new verification code was sent.'
-              : 'Development OTP: $debugOtp',
-        );
+        _showMessage('A new verification code was sent.');
       }
     } on ApiException catch (error) {
       if (mounted) _showMessage(error.message);
