@@ -8,10 +8,8 @@ def create_duplicate_alerts(registered_donor):
         return 0
 
     created = 0
-    manual_donors = Person.objects.filter(user__isnull=True).exclude(mobile_number__isnull=True)
+    manual_donors = Person.objects.filter(user__isnull=True, mobile_number=phone)
     for manual_donor in manual_donors:
-        if normalize_phone(manual_donor.mobile_number) != phone:
-            continue
         _, was_created = DuplicateDonorAlert.objects.get_or_create(
             registered_donor=registered_donor,
             manual_donor=manual_donor,

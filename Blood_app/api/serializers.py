@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.db import transaction
+from django.utils import timezone
 from rest_framework import serializers
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
@@ -15,10 +16,10 @@ User = get_user_model()
 BLOOD_GROUPS = ("A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-")
 
 
-def validate_location(attrs):
-    division = attrs.get("division")
-    district = attrs.get("district")
-    subdistrict = attrs.get("subdistrict")
+def validate_location(attrs, instance=None):
+    division = attrs.get("division", getattr(instance, "division", None))
+    district = attrs.get("district", getattr(instance, "district", None))
+    subdistrict = attrs.get("subdistrict", getattr(instance, "subdistrict", None))
     districts = country_data.get(division)
     if not districts or district not in districts:
         raise serializers.ValidationError({"district": "Choose a valid district for this division."})
@@ -88,7 +89,7 @@ class RegistrationRequestSerializer(serializers.Serializer):
                 user.set_password(password)
                 user.save(update_fields=("phone_number", "is_active", "password"))
             Person.objects.update_or_create(user=user, defaults=profile_values)
-        debug_otp = issue_email_otp(user, enforce_cooldown=False)
+        debug_otp = issue_email_otp(user)
         self.debug_otp = debug_otp
         return user
 
@@ -162,7 +163,6 @@ class PersonSerializer(serializers.ModelSerializer):
     can_moderate = serializers.BooleanField(source="user.can_moderate", read_only=True)
     created_by_email = serializers.EmailField(source="created_by.email", read_only=True)
     has_account = serializers.SerializerMethodField()
-    image_url = serializers.SerializerMethodField()
     eligible_to_donate = serializers.BooleanField(read_only=True)
     next_available_date = serializers.DateField(read_only=True)
     distance_km = serializers.SerializerMethodField()
@@ -172,18 +172,45 @@ class PersonSerializer(serializers.ModelSerializer):
         fields = (
             "id", "email", "phone_number", "role", "can_moderate", "created_by_email", "has_account",
             "name", "age", "gender", "mobile_number", "blood_group",
-            "division", "district", "subdistrict", "person_image", "image_url",
+            "division", "district", "subdistrict",
             "lastdonate", "latitude", "longitude", "is_available",
             "eligible_to_donate", "next_available_date", "distance_km", "updated_at",
         )
-        extra_kwargs = {"person_image": {"write_only": True, "required": False}}
 
-    def get_image_url(self, obj):
-        if not obj.person_image:
-            return None
-        url = obj.person_image.url
-        request = self.context.get("request")
-        return request.build_absolute_uri(url) if request and url.startswith("/") else url
+    def validate_age(self, value):
+        if value is not None and not 18 <= value <= 65:
+            raise serializers.ValidationError("Donor age must be between 18 and 65.")
+        return value
+
+    def validate_blood_group(self, value):
+        if value not in BLOOD_GROUPS:
+            raise serializers.ValidationError("Choose a valid blood group.")
+        return value
+
+    def validate_mobile_number(self, value):
+        value = normalize_phone(value)
+        if not is_valid_bangladesh_phone(value):
+            raise serializers.ValidationError("Enter a valid Bangladesh mobile number.")
+        if self.instance and self.instance.user_id:
+            exists = User.objects.filter(phone_number=value).exclude(pk=self.instance.user_id).exists()
+            if exists:
+                raise serializers.ValidationError("This phone number is already in use.")
+        return value
+
+    def validate_lastdonate(self, value):
+        if value and value > timezone.localdate():
+            raise serializers.ValidationError("Last donation cannot be in the future.")
+        return value
+
+    def validate(self, attrs):
+        return validate_location(attrs, self.instance)
+
+    def update(self, instance, validated_data):
+        profile = super().update(instance, validated_data)
+        if profile.user_id and "mobile_number" in validated_data:
+            profile.user.phone_number = profile.mobile_number
+            profile.user.save(update_fields=("phone_number",))
+        return profile
 
     def get_distance_km(self, obj):
         value = getattr(obj, "distance_km", None)
@@ -216,6 +243,16 @@ class ManualDonorSerializer(serializers.ModelSerializer):
         value = normalize_phone(value)
         if not is_valid_bangladesh_phone(value):
             raise serializers.ValidationError("Enter a valid Bangladesh mobile number.")
+        return value
+
+    def validate_age(self, value):
+        if value is not None and not 18 <= value <= 65:
+            raise serializers.ValidationError("Donor age must be between 18 and 65.")
+        return value
+
+    def validate_lastdonate(self, value):
+        if value and value > timezone.localdate():
+            raise serializers.ValidationError("Last donation cannot be in the future.")
         return value
 
     def validate_blood_group(self, value):
@@ -278,6 +315,20 @@ class BloodRequestSerializer(serializers.ModelSerializer):
         if value < 1 or value > 20:
             raise serializers.ValidationError("Units must be between 1 and 20.")
         return value
+
+    def validate_contact_number(self, value):
+        value = normalize_phone(value)
+        if not is_valid_bangladesh_phone(value):
+            raise serializers.ValidationError("Enter a valid Bangladesh mobile number.")
+        return value
+
+    def validate_needed_date(self, value):
+        if value < timezone.localdate():
+            raise serializers.ValidationError("The required date cannot be in the past.")
+        return value
+
+    def validate(self, attrs):
+        return validate_location(attrs, self.instance)
 
 
 class DonorAvailabilitySerializer(serializers.ModelSerializer):

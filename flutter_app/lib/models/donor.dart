@@ -11,7 +11,6 @@ class Donor {
     required this.eligible,
     required this.available,
     this.age,
-    this.imageUrl,
     this.lastDonated,
     this.nextAvailableDate,
     this.distanceKm,
@@ -28,7 +27,6 @@ class Donor {
   final String division;
   final String district;
   final String subdistrict;
-  final String? imageUrl;
   final DateTime? lastDonated;
   final DateTime? nextAvailableDate;
   final double? distanceKm;
@@ -50,7 +48,6 @@ class Donor {
     division: json['division'] as String? ?? '',
     district: json['district'] as String? ?? '',
     subdistrict: json['subdistrict'] as String? ?? '',
-    imageUrl: json['image_url'] as String?,
     lastDonated: DateTime.tryParse(json['lastdonate'] as String? ?? ''),
     nextAvailableDate: DateTime.tryParse(
       json['next_available_date'] as String? ?? '',

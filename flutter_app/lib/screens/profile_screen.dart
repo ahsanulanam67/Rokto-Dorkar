@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../core/constants.dart';
+import '../core/theme.dart';
 import '../services/api_service.dart';
 import '../widgets/location_fields.dart';
 
@@ -20,11 +19,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _age = TextEditingController(),
       _contact = TextEditingController();
   Map<String, dynamic> _locations = {};
-  String? _bloodGroup, _gender, _division, _district, _subdistrict, _imageUrl;
+  String? _bloodGroup, _gender, _division, _district, _subdistrict;
   String _role = 'user';
   DateTime? _lastDonated;
-  double? _latitude, _longitude;
-  XFile? _image;
   bool _available = true, _loading = true, _saving = false;
 
   @override
@@ -61,12 +58,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _division = profile['division'] as String?;
           _district = profile['district'] as String?;
           _subdistrict = profile['subdistrict'] as String?;
-          _imageUrl = profile['image_url'] as String?;
           _lastDonated = DateTime.tryParse(
             profile['lastdonate']?.toString() ?? '',
           );
-          _latitude = (profile['latitude'] as num?)?.toDouble();
-          _longitude = (profile['longitude'] as num?)?.toDouble();
           _available = profile['is_available'] as bool? ?? true;
           _loading = false;
         });
@@ -78,22 +72,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             .showSnackBar(SnackBar(content: Text(error.toString())));
       }
     }
-  }
-
-  Future<void> _useLocation() async {
-    var permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-    }
-    if (permission == LocationPermission.denied ||
-        permission == LocationPermission.deniedForever) {
-      return;
-    }
-    final position = await Geolocator.getCurrentPosition();
-    setState(() {
-      _latitude = position.latitude;
-      _longitude = position.longitude;
-    });
   }
 
   Future<void> _save() async {
@@ -113,9 +91,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ? ''
             : DateFormat('yyyy-MM-dd').format(_lastDonated!),
         'is_available': _available,
-        if (_latitude != null) 'latitude': _latitude,
-        if (_longitude != null) 'longitude': _longitude,
-      }, image: _image);
+      });
       if (mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(const SnackBar(content: Text('Profile saved')));
@@ -144,48 +120,87 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Center(
-                  child: Stack(
-                    clipBehavior: Clip.none,
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [AppTheme.red, AppTheme.crimson],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  child: Row(
                     children: [
                       CircleAvatar(
-                        radius: 58,
-                        backgroundColor: const Color(0xFFFFDFDC),
-                        backgroundImage: _imageUrl == null
-                            ? null
-                            : NetworkImage(_imageUrl!),
-                        child: _imageUrl == null
-                            ? const Icon(Icons.person, size: 58)
-                            : null,
+                        radius: 34,
+                        backgroundColor: Colors.white.withValues(alpha: 0.18),
+                        child: Icon(
+                          _gender == 'male'
+                              ? Icons.man_rounded
+                              : _gender == 'female'
+                              ? Icons.woman_rounded
+                              : Icons.person_rounded,
+                          size: 44,
+                          color: Colors.white,
+                        ),
                       ),
-                      Positioned(
-                        right: -6,
-                        bottom: -6,
-                        child: IconButton.filled(
-                          onPressed: () async {
-                            final picked = await ImagePicker().pickImage(
-                              source: ImageSource.gallery,
-                              imageQuality: 82,
-                              maxWidth: 1200,
-                            );
-                            if (picked != null) setState(() => _image = picked);
-                          },
-                          icon: const Icon(Icons.camera_alt_outlined),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _name.text.isEmpty
+                                  ? 'Your donor profile'
+                                  : _name.text,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.titleLarge
+                                  ?.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              _bloodGroup == null
+                                  ? 'Complete your donor information'
+                                  : 'Blood group $_bloodGroup',
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.85),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          _role.toUpperCase(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
-                if (_image != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text(
-                      'Selected: ${_image!.name}',
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                Center(child: Chip(label: Text(_role.toUpperCase()))),
                 const SizedBox(height: 24),
+                const _SectionTitle(
+                  icon: Icons.person_outline_rounded,
+                  title: 'Personal details',
+                ),
+                const SizedBox(height: 12),
                 TextFormField(
                   controller: _name,
                   decoration: const InputDecoration(
@@ -282,6 +297,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   onSubdistrictChanged: (value) =>
                       setState(() => _subdistrict = value),
                 ),
+                const SizedBox(height: 24),
+                const _SectionTitle(
+                  icon: Icons.volunteer_activism_outlined,
+                  title: 'Donation status',
+                ),
                 const SizedBox(height: 12),
                 OutlinedButton.icon(
                   onPressed: () async {
@@ -305,21 +325,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   child: const Text('Clear donation date'),
                 ),
                 SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 4),
                   value: _available,
                   onChanged: (value) => setState(() => _available = value),
                   title: const Text('Available to donate'),
                   subtitle: const Text(
                     'Turn this off temporarily when unavailable',
-                  ),
-                ),
-                OutlinedButton.icon(
-                  onPressed: _useLocation,
-                  icon: const Icon(Icons.my_location),
-                  label: Text(
-                    _latitude == null
-                        ? 'Use my precise location'
-                        : 'Precise location added',
                   ),
                 ),
                 const SizedBox(height: 18),
@@ -342,4 +353,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   String? _required(String? value) =>
       (value?.trim().isEmpty ?? true) ? 'Required' : null;
+}
+
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle({required this.icon, required this.title});
+
+  final IconData icon;
+  final String title;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      Icon(icon, color: AppTheme.red),
+      const SizedBox(width: 8),
+      Text(
+        title,
+        style: Theme.of(context).textTheme.titleMedium
+            ?.copyWith(fontWeight: FontWeight.w800),
+      ),
+    ],
+  );
 }

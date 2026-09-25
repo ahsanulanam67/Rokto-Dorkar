@@ -31,18 +31,7 @@ class DonorCard extends StatelessWidget {
               CircleAvatar(
                 radius: 31,
                 backgroundColor: const Color(0xFFFFE1DE),
-                child: ClipOval(
-                  child: donor.imageUrl == null
-                      ? Icon(_avatarIcon, size: 42, color: AppTheme.red)
-                      : Image.network(
-                          donor.imageUrl!,
-                          width: 62,
-                          height: 62,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) =>
-                              Icon(_avatarIcon, size: 42, color: AppTheme.red),
-                        ),
-                ),
+                child: Icon(_avatarIcon, size: 42, color: AppTheme.red),
               ),
               const SizedBox(width: 14),
               Expanded(

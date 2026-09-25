@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../core/constants.dart';
 import '../models/blood_request.dart';
@@ -143,23 +142,8 @@ class ApiService {
   Future<Map<String, dynamic>> profile() async =>
       Map<String, dynamic>.from((await _dio.get('profile/')).data as Map);
 
-  Future<Map<String, dynamic>> saveProfile(
-    Map<String, dynamic> values, {
-    XFile? image,
-  }) async {
-    final data = FormData.fromMap(values);
-    if (image != null) {
-      data.files.add(
-        MapEntry(
-          'person_image',
-          MultipartFile.fromBytes(
-            await image.readAsBytes(),
-            filename: image.name,
-          ),
-        ),
-      );
-    }
-    final response = await _dio.patch('profile/', data: data);
+  Future<Map<String, dynamic>> saveProfile(Map<String, dynamic> values) async {
+    final response = await _dio.patch('profile/', data: values);
     return Map<String, dynamic>.from(response.data as Map);
   }
 

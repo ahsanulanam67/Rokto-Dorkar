@@ -156,6 +156,24 @@ class ApiTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIsNone(response.data["lastdonate"])
 
+    def test_profile_rejects_invalid_phone_and_future_donation_date(self):
+        Person.objects.create(
+            user=self.user, name="Member", age=25, gender="male",
+            mobile_number="01700000000", blood_group="A+", division="Dhaka",
+            district="Dhaka", subdistrict="Savar", is_available=True,
+        )
+        response = self.client.patch(
+            "/api/v1/profile/",
+            {
+                "mobile_number": "12345",
+                "lastdonate": str(timezone.localdate() + timedelta(days=1)),
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("mobile_number", response.data)
+        self.assertIn("lastdonate", response.data)
+
     def test_request_lifecycle(self):
         payload = {
             "patient_name": "Patient", "blood_group": "O-", "hospital": "Medical College",

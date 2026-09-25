@@ -71,12 +71,15 @@ def auth_payload(user):
 
 class RegisterView(APIView):
     permission_classes = (permissions.AllowAny,)
+    throttle_scope = "otp_send"
 
     def post(self, request):
         serializer = RegistrationRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         try:
             serializer.save()
+        except OTPCooldownError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_429_TOO_MANY_REQUESTS)
         except OTPDeliveryError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
         data = {"detail": "Verification code sent.", "email": serializer.validated_data["email"]}
@@ -87,6 +90,7 @@ class RegisterView(APIView):
 
 class VerifyRegistrationView(APIView):
     permission_classes = (permissions.AllowAny,)
+    throttle_scope = "otp_verify"
 
     def post(self, request):
         serializer = RegistrationVerifySerializer(data=request.data)
@@ -100,6 +104,7 @@ class VerifyRegistrationView(APIView):
 
 class ResendOTPView(APIView):
     permission_classes = (permissions.AllowAny,)
+    throttle_scope = "otp_send"
 
     def post(self, request):
         serializer = ResendOTPSerializer(data=request.data)
@@ -118,6 +123,7 @@ class ResendOTPView(APIView):
 
 class EmailTokenObtainPairView(TokenObtainPairView):
     serializer_class = EmailTokenObtainPairSerializer
+    throttle_scope = "login"
 
 
 class IsModerator(permissions.BasePermission):
@@ -166,6 +172,7 @@ class DonorListView(generics.ListAPIView):
             Person.objects.exclude(name__isnull=True)
             .exclude(name="")
             .filter(Q(user__isnull=True) | Q(user__is_active=True))
+            .select_related("user", "created_by")
         )
         blood_group = params.get("blood_group")
         if blood_group:
@@ -218,9 +225,13 @@ class ManualDonorCreateView(generics.CreateAPIView):
             donor.save(update_fields=("latitude", "longitude", "updated_at"))
 
         phone = normalize_phone(donor.mobile_number)
-        for registered in Person.objects.filter(user__isnull=False).select_related("user"):
-            if registered.user.is_active and normalize_phone(registered.mobile_number) == phone:
-                create_duplicate_alerts(registered)
+        registered_donors = Person.objects.filter(
+            user__isnull=False,
+            user__is_active=True,
+            mobile_number=phone,
+        )
+        for registered in registered_donors:
+            create_duplicate_alerts(registered)
 
 
 class UserListView(generics.ListAPIView):
@@ -228,7 +239,7 @@ class UserListView(generics.ListAPIView):
     permission_classes = (IsAdmin,)
 
     def get_queryset(self):
-        queryset = User.objects.all().order_by("email")
+        queryset = User.objects.select_related("person").order_by("email")
         search = self.request.query_params.get("search", "").strip()
         if search:
             queryset = queryset.filter(Q(email__icontains=search) | Q(phone_number__icontains=search))

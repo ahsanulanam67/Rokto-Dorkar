@@ -3,6 +3,8 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 from datetime import timedelta
 
+from .phones import normalize_phone
+
 User = get_user_model()
 # Create your models here.
 
@@ -24,7 +26,7 @@ class Person(models.Model):
     name = models.CharField(null=True, max_length=100)
     age = models.IntegerField(null=True) 
     gender = models.CharField(max_length=10, choices=Gender.choices, null=True, blank=True)
-    mobile_number = models.CharField(null=True,max_length=100)
+    mobile_number = models.CharField(null=True, max_length=100, db_index=True)
     blood_group = models.CharField(null=True,max_length=10)
     division  = models.CharField(null=True,max_length=100)
     district = models.CharField(null=True,max_length=100)
@@ -35,6 +37,29 @@ class Person(models.Model):
     latitude = models.FloatField(null=True, blank=True)
     is_available = models.BooleanField(default=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=("blood_group",), name="donor_blood_idx"),
+            models.Index(
+                fields=("division", "district", "subdistrict"),
+                name="donor_location_idx",
+            ),
+            models.Index(
+                fields=("is_available", "lastdonate"),
+                name="donor_eligible_idx",
+            ),
+            models.Index(fields=("-updated_at",), name="donor_updated_idx"),
+        ]
+
+    def save(self, *args, **kwargs):
+        normalized_phone = normalize_phone(self.mobile_number)
+        if normalized_phone != self.mobile_number:
+            self.mobile_number = normalized_phone or None
+            update_fields = kwargs.get("update_fields")
+            if update_fields is not None:
+                kwargs["update_fields"] = set(update_fields) | {"mobile_number"}
+        super().save(*args, **kwargs)
 
     @property
     def eligible_to_donate(self):
@@ -83,6 +108,12 @@ class DuplicateDonorAlert(models.Model):
 
     class Meta:
         ordering = ("-created_at",)
+        indexes = [
+            models.Index(
+                fields=("status", "-created_at"),
+                name="duplicate_status_idx",
+            ),
+        ]
         constraints = [
             models.UniqueConstraint(
                 fields=("registered_donor", "manual_donor"),
@@ -119,6 +150,12 @@ class BloodRequest(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(
+                fields=("status", "blood_group", "-created_at"),
+                name="request_lookup_idx",
+            ),
+        ]
 
     def __str__(self):
         return f"{self.blood_group} for {self.patient_name}"

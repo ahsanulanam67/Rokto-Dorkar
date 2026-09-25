@@ -5,7 +5,7 @@ Rokto Dorkar is a full-stack blood donor network for Bangladesh. This repository
 - a Django REST API and Django admin;
 - the original server-rendered Django website;
 - a Flutter app for Android, iOS, and web;
-- Neon PostgreSQL, Render, Cloudinary, and Vercel deployment configuration.
+- Neon PostgreSQL, Render, and Vercel deployment configuration.
 
 ## Features
 
@@ -14,13 +14,13 @@ Rokto Dorkar is a full-stack blood donor network for Bangladesh. This repository
 - Admin role management and moderator/admin creation of donors without accounts
 - Phone-normalized duplicate alerts when a manually added donor later creates an account
 - Admin review to delete the manual duplicate or dismiss an incorrect match
-- Donor profile, profile picture, contact details, blood group, and Bangladesh address
+- Donor profile with gender-based avatar, contact details, blood group, and Bangladesh address
 - Available/unavailable donor status
 - Last-donation tracking and automatic 120-day eligibility calculation
 - Donor search by blood group, division, district, and upazila
 - Current Bangladesh administrative coverage: 8 divisions, 64 districts, and 500 upazilas (September 2026)
-- OpenStreetMap/Nominatim geocoding and 30 km proximity search
-- Direct donor calling and map links
+- Backend support for coordinate-based proximity search
+- Direct donor calling
 - Create and browse urgent blood requests
 - Request owners can mark a request fulfilled
 - Responsive Flutter UI for mobile and web
@@ -95,13 +95,10 @@ DATABASE_URL=<Neon pooled connection string ending in sslmode=require>
 ALLOWED_HOSTS=<your-service>.onrender.com
 CORS_ALLOWED_ORIGINS=https://<your-flutter-site>.vercel.app
 CSRF_TRUSTED_ORIGINS=https://<your-service>.onrender.com,https://<your-flutter-site>.vercel.app
-CLOUDINARY_URL=cloudinary://<key>:<secret>@<cloud-name>
 BREVO_API_KEY=<your Brevo API key>
 BREVO_SENDER_EMAIL=<a sender verified by Brevo>
 BREVO_SENDER_NAME=Rokto Dorkar
 ```
-
-Cloudinary is needed for durable profile pictures because Render's local filesystem is ephemeral. The application uses local media storage when `CLOUDINARY_URL` is absent.
 
 The Brevo sender email must be verified before production OTP delivery works. In local `DEBUG=True` development without a Brevo key, the OTP is printed in the Django terminal and returned as `debug_otp` for testing.
 
