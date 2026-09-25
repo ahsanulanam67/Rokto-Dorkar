@@ -1,11 +1,11 @@
 {
-    "name": "rokto_dorkar_app",
-    "short_name": "rokto_dorkar_app",
+    "name": "Rokto Dorkar",
+    "short_name": "Rokto Dorkar",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#FFF7F5",
+    "theme_color": "#C62828",
+    "description": "Rokto Dorkar blood donor network for Bangladesh.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
