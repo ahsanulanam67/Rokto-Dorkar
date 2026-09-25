@@ -14,8 +14,7 @@ class ApiTests(APITestCase):
             email="member@example.com", phone_number="01700000000",
             password="StrongPass!42", email_verified=True,
         )
-        response = self.client.post("/api/v1/auth/login/", {"email": "member@example.com", "password": "StrongPass!42"})
-        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {response.data['access']}")
+        self.client.force_authenticate(self.user)
 
     def test_current_bangladesh_location_coverage(self):
         response = self.client.get("/api/v1/locations/")
@@ -32,7 +31,7 @@ class ApiTests(APITestCase):
 
     @override_settings(DEBUG=True, BREVO_API_KEY="")
     def test_email_otp_registration(self):
-        self.client.credentials()
+        self.client.force_authenticate(user=None)
         Person.objects.create(
             name="Manual New", gender="female", mobile_number="+8801900000000",
             blood_group="B+", division="Dhaka", district="Dhaka", subdistrict="Savar",
@@ -107,6 +106,55 @@ class ApiTests(APITestCase):
         alert.refresh_from_db()
         self.assertEqual(alert.status, DuplicateDonorAlert.Status.RESOLVED)
         self.assertIsNone(alert.manual_donor)
+
+    def test_admin_can_delete_users_and_donor_information_without_edit_access(self):
+        admin = get_user_model().objects.create_superuser(
+            email="delete-admin@example.com", password="AdminStrong!42",
+        )
+        target = get_user_model().objects.create_user(
+            email="delete-me@example.com", phone_number="01600000000",
+            password="StrongPass!42", email_verified=True,
+        )
+        donor = Person.objects.create(
+            user=target, name="Delete Donor", mobile_number="01600000000",
+            blood_group="O+", division="Dhaka", district="Dhaka",
+            subdistrict="Savar",
+        )
+        self.client.force_authenticate(admin)
+
+        response = self.client.patch(
+            f"/api/v1/admin/donors/{donor.pk}/",
+            {"name": "Admins cannot edit this"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 405)
+        response = self.client.delete(f"/api/v1/admin/donors/{donor.pk}/")
+        self.assertEqual(response.status_code, 204)
+        self.assertFalse(Person.objects.filter(pk=donor.pk).exists())
+        self.assertTrue(get_user_model().objects.filter(pk=target.pk).exists())
+
+        response = self.client.delete(f"/api/v1/admin/users/{target.pk}/")
+        self.assertEqual(response.status_code, 204)
+        self.assertFalse(get_user_model().objects.filter(pk=target.pk).exists())
+
+        response = self.client.delete(f"/api/v1/admin/users/{admin.pk}/")
+        self.assertEqual(response.status_code, 400)
+
+    def test_regular_user_cannot_delete_users_or_donors(self):
+        donor = Person.objects.create(
+            name="Protected Donor", mobile_number="01500000000",
+            blood_group="A-", division="Dhaka", district="Dhaka",
+            subdistrict="Savar",
+        )
+        self.client.force_authenticate(self.user)
+        self.assertEqual(
+            self.client.delete(f"/api/v1/admin/donors/{donor.pk}/").status_code,
+            403,
+        )
+        self.assertEqual(
+            self.client.delete(f"/api/v1/admin/users/{self.user.pk}/").status_code,
+            403,
+        )
 
     def test_profile_and_eligible_nearby_donor_search(self):
         donor_user = get_user_model().objects.create_user(
@@ -194,11 +242,7 @@ class ApiTests(APITestCase):
             email_verified=True, role="moderator",
         )
         donor = Person.objects.create(user=self.user, name="Listed donor", is_available=True)
-        response = self.client.post(
-            "/api/v1/auth/login/",
-            {"email": moderator.email, "password": "StrongPass!42"},
-        )
-        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {response.data['access']}")
+        self.client.force_authenticate(moderator)
         response = self.client.patch(
             f"/api/v1/donors/{donor.pk}/availability/", {"is_available": False},
         )

@@ -2,6 +2,8 @@ from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView
 from .views import (
+    AdminDonorDeleteView,
+    AdminDonorListView,
     BloodRequestViewSet,
     DonorAvailabilityView,
     DonorListView,
@@ -14,6 +16,7 @@ from .views import (
     ResendOTPView,
     VerifyRegistrationView,
     UserListView,
+    UserDeleteView,
     UserRoleUpdateView,
     health_view,
     locations_view,
@@ -35,7 +38,10 @@ urlpatterns = [
     path("donors/<int:pk>/availability/", DonorAvailabilityView.as_view(), name="api-donor-availability"),
     path("moderation/donors/", ManualDonorCreateView.as_view(), name="api-manual-donor-create"),
     path("admin/users/", UserListView.as_view(), name="api-admin-users"),
+    path("admin/users/<int:pk>/", UserDeleteView.as_view(), name="api-admin-user-delete"),
     path("admin/users/<int:pk>/role/", UserRoleUpdateView.as_view(), name="api-admin-user-role"),
+    path("admin/donors/", AdminDonorListView.as_view(), name="api-admin-donors"),
+    path("admin/donors/<int:pk>/", AdminDonorDeleteView.as_view(), name="api-admin-donor-delete"),
     path("admin/duplicates/", DuplicateAlertListView.as_view(), name="api-admin-duplicates"),
     path("admin/duplicates/<int:pk>/resolve/", DuplicateAlertResolveView.as_view(), name="api-admin-duplicate-resolve"),
     path("locations/", locations_view, name="api-locations"),

@@ -12,6 +12,7 @@ Rokto Dorkar is a full-stack blood donor network for Bangladesh. This repository
 - Email registration with required donor name, phone, blood group, gender, Bangladesh address, six-digit Brevo OTP verification, and JWT login
 - User, moderator, and admin roles with server-enforced permissions
 - Admin role management and moderator/admin creation of donors without accounts
+- Admin-only deletion of user accounts and donor records, without donor editing access
 - Phone-normalized duplicate alerts when a manually added donor later creates an account
 - Admin review to delete the manual duplicate or dismiss an incorrect match
 - Donor profile with gender-based avatar, contact details, blood group, and Bangladesh address

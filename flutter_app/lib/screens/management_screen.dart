@@ -17,6 +17,7 @@ class ManagementScreen extends StatelessWidget {
       const Tab(icon: Icon(Icons.person_add_alt), text: 'Add donor'),
       if (isAdmin)
         const Tab(icon: Icon(Icons.content_copy), text: 'Duplicates'),
+      if (isAdmin) const Tab(icon: Icon(Icons.bloodtype), text: 'Donors'),
       if (isAdmin) const Tab(icon: Icon(Icons.manage_accounts), text: 'Roles'),
     ];
     return DefaultTabController(
@@ -29,6 +30,7 @@ class ManagementScreen extends StatelessWidget {
               children: [
                 const _ManualDonorForm(),
                 if (isAdmin) const _DuplicateAlerts(),
+                if (isAdmin) const _AdminDonors(),
                 if (isAdmin) const _UserRoles(),
               ],
             ),
@@ -361,6 +363,116 @@ class _DuplicateAlertsState extends State<_DuplicateAlerts> {
   );
 }
 
+class _AdminDonors extends StatefulWidget {
+  const _AdminDonors();
+
+  @override
+  State<_AdminDonors> createState() => _AdminDonorsState();
+}
+
+class _AdminDonorsState extends State<_AdminDonors> {
+  late Future<List<Map<String, dynamic>>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _load();
+  }
+
+  Future<List<Map<String, dynamic>>> _load() =>
+      context.read<ApiService>().adminDonors();
+
+  Future<void> _delete(Map<String, dynamic> donor) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete donor information?'),
+        content: Text(
+          '${donor['name'] ?? 'This donor'} will be removed from the donor list. '
+          'The user account will remain unless it is deleted separately.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      await context.read<ApiService>().deleteAdminDonor(donor['id'] as int);
+      if (mounted) {
+        setState(() => _future = _load());
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Donor information deleted.')),
+        );
+      }
+    } on ApiException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    }
+  }
+
+  @override
+  Widget build(
+    BuildContext context,
+  ) => FutureBuilder<List<Map<String, dynamic>>>(
+    future: _future,
+    builder: (context, snapshot) {
+      if (snapshot.hasError) {
+        return Center(child: Text(snapshot.error.toString()));
+      }
+      if (!snapshot.hasData) {
+        return const Center(child: CircularProgressIndicator());
+      }
+      final donors = snapshot.data!;
+      if (donors.isEmpty) {
+        return const Center(child: Text('No donor information found.'));
+      }
+      return RefreshIndicator(
+        onRefresh: () async => setState(() => _future = _load()),
+        child: ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: donors.length,
+          itemBuilder: (context, index) {
+            final donor = donors[index];
+            final location = [
+              donor['subdistrict'],
+              donor['district'],
+            ].whereType<String>().where((value) => value.isNotEmpty).join(', ');
+            return Card(
+              child: ListTile(
+                leading: CircleAvatar(
+                  child: Text(donor['blood_group']?.toString() ?? '?'),
+                ),
+                title: Text(donor['name']?.toString() ?? 'Unnamed donor'),
+                subtitle: Text(
+                  '${donor['mobile_number'] ?? 'No phone'}'
+                  '${location.isEmpty ? '' : '\n$location'}'
+                  '\n${donor['has_account'] == true ? 'Registered account' : 'Added manually'}',
+                ),
+                isThreeLine: true,
+                trailing: IconButton(
+                  tooltip: 'Delete donor information',
+                  onPressed: () => _delete(donor),
+                  icon: const Icon(Icons.delete_outline),
+                ),
+              ),
+            );
+          },
+        ),
+      );
+    },
+  );
+}
+
 class _UserRoles extends StatefulWidget {
   const _UserRoles();
 
@@ -381,8 +493,51 @@ class _UserRolesState extends State<_UserRoles> {
       context.read<ApiService>().adminUsers();
 
   Future<void> _setRole(int id, String role) async {
-    await context.read<ApiService>().updateUserRole(id, role);
-    setState(() => _future = _load());
+    try {
+      await context.read<ApiService>().updateUserRole(id, role);
+      if (mounted) setState(() => _future = _load());
+    } on ApiException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    }
+  }
+
+  Future<void> _deleteUser(Map<String, dynamic> user) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete user account?'),
+        content: Text(
+          '${user['email']} and their associated donor information will be permanently deleted.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete account'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      await context.read<ApiService>().deleteAdminUser(user['id'] as int);
+      if (mounted) {
+        setState(() => _future = _load());
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('User deleted.')));
+      }
+    } on ApiException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    }
   }
 
   @override
@@ -408,18 +563,40 @@ class _UserRolesState extends State<_UserRoles> {
               isThreeLine: true,
               trailing: role == 'admin'
                   ? const Chip(label: Text('ADMIN'))
-                  : DropdownButton<String>(
-                      value: role,
-                      items: const [
-                        DropdownMenuItem(value: 'user', child: Text('User')),
-                        DropdownMenuItem(
-                          value: 'moderator',
-                          child: Text('Moderator'),
+                  : PopupMenuButton<String>(
+                      tooltip: 'Manage user',
+                      onSelected: (action) {
+                        if (action == 'delete') {
+                          _deleteUser(user);
+                        } else {
+                          _setRole(user['id'] as int, action);
+                        }
+                      },
+                      itemBuilder: (context) => [
+                        PopupMenuItem(
+                          value: role == 'moderator' ? 'user' : 'moderator',
+                          child: ListTile(
+                            leading: Icon(
+                              role == 'moderator'
+                                  ? Icons.person_outline
+                                  : Icons.admin_panel_settings_outlined,
+                            ),
+                            title: Text(
+                              role == 'moderator'
+                                  ? 'Make user'
+                                  : 'Make moderator',
+                            ),
+                          ),
+                        ),
+                        const PopupMenuDivider(),
+                        const PopupMenuItem(
+                          value: 'delete',
+                          child: ListTile(
+                            leading: Icon(Icons.delete_outline),
+                            title: Text('Delete user'),
+                          ),
                         ),
                       ],
-                      onChanged: (value) {
-                        if (value != null) _setRole(user['id'] as int, value);
-                      },
                     ),
             ),
           );

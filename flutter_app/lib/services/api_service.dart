@@ -222,6 +222,34 @@ class ApiService {
     }
   }
 
+  Future<void> deleteAdminUser(int id) async {
+    try {
+      await _dio.delete('admin/users/$id/');
+    } on DioException catch (error) {
+      throw ApiException(_message(error));
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> adminDonors() async {
+    try {
+      final data = (await _dio.get('admin/donors/')).data;
+      final items = data is Map ? data['results'] as List : data as List;
+      return items
+          .map((item) => Map<String, dynamic>.from(item as Map))
+          .toList();
+    } on DioException catch (error) {
+      throw ApiException(_message(error));
+    }
+  }
+
+  Future<void> deleteAdminDonor(int id) async {
+    try {
+      await _dio.delete('admin/donors/$id/');
+    } on DioException catch (error) {
+      throw ApiException(_message(error));
+    }
+  }
+
   Future<List<Map<String, dynamic>>> duplicateAlerts() async {
     try {
       final data = (await _dio.get('admin/duplicates/')).data;

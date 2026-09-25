@@ -260,6 +260,33 @@ class UserRoleUpdateView(APIView):
         return Response(UserRoleSerializer(target).data)
 
 
+class UserDeleteView(APIView):
+    permission_classes = (IsAdmin,)
+
+    def delete(self, request, pk):
+        target = get_object_or_404(User, pk=pk)
+        if target.pk == request.user.pk:
+            return Response({"detail": "You cannot delete your own account."}, status=400)
+        if target.is_superuser or target.role == "admin":
+            return Response({"detail": "Administrator accounts cannot be deleted here."}, status=400)
+        target.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class AdminDonorListView(generics.ListAPIView):
+    serializer_class = PersonSerializer
+    permission_classes = (IsAdmin,)
+
+    def get_queryset(self):
+        return Person.objects.select_related("user", "created_by").order_by("name", "id")
+
+
+class AdminDonorDeleteView(generics.DestroyAPIView):
+    queryset = Person.objects.all()
+    permission_classes = (IsAdmin,)
+    http_method_names = ("delete", "options")
+
+
 class DuplicateAlertListView(generics.ListAPIView):
     serializer_class = DuplicateDonorAlertSerializer
     permission_classes = (IsAdmin,)
