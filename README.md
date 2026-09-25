@@ -22,7 +22,7 @@ Rokto Dorkar connects patients and verified blood donors across Bangladesh. The 
 
 | Deliverable | Status | Location |
 | --- | --- | --- |
-| Android application | v1.0.0 installable APK | [Download APK](https://github.com/ahsanulanam67/Rokto-Dorkar/releases/download/v1.0.0/Rokto-Dorkar-v1.0.apk) |
+| Android application | v1.0.0 installable APK | [GitHub Release](https://github.com/ahsanulanam67/Rokto-Dorkar/releases/tag/v1.0.0) · [Repository copy](releases/Rokto-Dorkar-v1.0.apk?raw=1) |
 | Flutter application | Android, iOS, and web source | [`flutter_app/`](flutter_app/) |
 | REST API | Deployed on Render | [API health check](https://rokto-dorkar.onrender.com/api/v1/health/) |
 | Database | Neon serverless PostgreSQL | Configured through `DATABASE_URL` |
