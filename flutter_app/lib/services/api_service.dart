@@ -102,6 +102,39 @@ class ApiService {
     }
   }
 
+  Future<String?> requestPasswordReset(String email) async {
+    try {
+      final response = await _dio.post(
+        'auth/password-reset/request/',
+        data: {'email': email},
+      );
+      return response.data['debug_otp'] as String?;
+    } on DioException catch (error) {
+      throw ApiException(_message(error));
+    }
+  }
+
+  Future<void> confirmPasswordReset({
+    required String email,
+    required String otp,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    try {
+      await _dio.post(
+        'auth/password-reset/confirm/',
+        data: {
+          'email': email,
+          'otp': otp,
+          'new_password': newPassword,
+          'confirm_password': confirmPassword,
+        },
+      );
+    } on DioException catch (error) {
+      throw ApiException(_message(error));
+    }
+  }
+
   Future<void> logout() => _storage.deleteAll();
 
   Future<bool> _refresh() async {

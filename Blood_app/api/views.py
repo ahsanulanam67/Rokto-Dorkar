@@ -12,7 +12,12 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from Accounts.services import OTPDeliveryError, OTPCooldownError, issue_email_otp
+from Accounts.services import (
+    OTPDeliveryError,
+    OTPCooldownError,
+    issue_email_otp,
+    issue_password_reset_otp,
+)
 from Blood_app.country import country_data
 from Blood_app.duplicates import create_duplicate_alerts
 from Blood_app.models import BloodRequest, DuplicateDonorAlert, Person
@@ -23,6 +28,8 @@ from .serializers import (
     EmailTokenObtainPairSerializer,
     DuplicateDonorAlertSerializer,
     ManualDonorSerializer,
+    PasswordResetConfirmSerializer,
+    PasswordResetRequestSerializer,
     PersonSerializer,
     RegistrationRequestSerializer,
     RegistrationVerifySerializer,
@@ -124,6 +131,40 @@ class ResendOTPView(APIView):
 class EmailTokenObtainPairView(TokenObtainPairView):
     serializer_class = EmailTokenObtainPairSerializer
     throttle_scope = "login"
+
+
+class PasswordResetRequestView(APIView):
+    permission_classes = (permissions.AllowAny,)
+    throttle_scope = "otp_send"
+
+    def post(self, request):
+        serializer = PasswordResetRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        debug_otp = None
+        if serializer.user:
+            try:
+                debug_otp = issue_password_reset_otp(serializer.user)
+            except OTPCooldownError as exc:
+                return Response({"detail": str(exc)}, status=status.HTTP_429_TOO_MANY_REQUESTS)
+            except OTPDeliveryError as exc:
+                return Response({"detail": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        data = {
+            "detail": "If an active account exists for this email, a password reset code was sent."
+        }
+        if debug_otp:
+            data["debug_otp"] = debug_otp
+        return Response(data)
+
+
+class PasswordResetConfirmView(APIView):
+    permission_classes = (permissions.AllowAny,)
+    throttle_scope = "otp_verify"
+
+    def post(self, request):
+        serializer = PasswordResetConfirmSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({"detail": "Your password has been reset. You can now log in."})
 
 
 class IsModerator(permissions.BasePermission):

@@ -5,9 +5,11 @@ from datetime import timedelta
 import requests
 from django.conf import settings
 from django.contrib.auth.hashers import check_password, make_password
+from django.db import transaction
 from django.utils import timezone
+from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
 
-from .models import EmailVerificationOTP
+from .models import EmailVerificationOTP, PasswordResetOTP
 
 
 logger = logging.getLogger(__name__)
@@ -44,7 +46,12 @@ def issue_email_otp(user, enforce_cooldown=True):
             "attempts": 0,
         },
     )
-    _send_brevo_email(user.email, code)
+    _send_brevo_email(
+        user.email,
+        code,
+        subject="Your Rokto Dorkar verification code",
+        purpose="verify your email address",
+    )
     return code if settings.DEBUG and not settings.BREVO_API_KEY else None
 
 
@@ -70,7 +77,62 @@ def verify_email_otp(user, code):
     return user
 
 
-def _send_brevo_email(recipient, code):
+def issue_password_reset_otp(user, enforce_cooldown=True):
+    now = timezone.now()
+    current = PasswordResetOTP.objects.filter(user=user).first()
+    if current and enforce_cooldown:
+        available_at = current.last_sent_at + timedelta(seconds=settings.OTP_RESEND_SECONDS)
+        if available_at > now:
+            seconds = max(1, int((available_at - now).total_seconds()))
+            raise OTPCooldownError(f"Please wait {seconds} seconds before requesting another code.")
+
+    code = f"{secrets.randbelow(1_000_000):06d}"
+    PasswordResetOTP.objects.update_or_create(
+        user=user,
+        defaults={
+            "code_hash": make_password(code),
+            "expires_at": now + timedelta(minutes=settings.OTP_EXPIRY_MINUTES),
+            "last_sent_at": now,
+            "attempts": 0,
+        },
+    )
+    try:
+        _send_brevo_email(
+            user.email,
+            code,
+            subject="Reset your Rokto Dorkar password",
+            purpose="reset your password",
+        )
+    except OTPDeliveryError:
+        PasswordResetOTP.objects.filter(user=user).delete()
+        raise
+    return code if settings.DEBUG and not settings.BREVO_API_KEY else None
+
+
+def reset_password_with_otp(user, code, new_password):
+    try:
+        verification = user.password_reset_otp
+    except PasswordResetOTP.DoesNotExist as exc:
+        raise OTPError("Request a new password reset code.") from exc
+
+    if verification.expires_at <= timezone.now():
+        raise OTPError("This password reset code has expired.")
+    if verification.attempts >= settings.OTP_MAX_ATTEMPTS:
+        raise OTPError("Too many attempts. Request a new password reset code.")
+    if not check_password(str(code).strip(), verification.code_hash):
+        verification.attempts += 1
+        verification.save(update_fields=("attempts",))
+        raise OTPError("The password reset code is incorrect.")
+
+    with transaction.atomic():
+        user.set_password(new_password)
+        user.save(update_fields=("password",))
+        for outstanding in OutstandingToken.objects.filter(user=user):
+            BlacklistedToken.objects.get_or_create(token=outstanding)
+        verification.delete()
+
+
+def _send_brevo_email(recipient, code, *, subject, purpose):
     if not settings.BREVO_API_KEY:
         if settings.DEBUG:
             logger.warning("Development OTP for %s: %s", recipient, code)
@@ -88,11 +150,11 @@ def _send_brevo_email(recipient, code):
             json={
                 "sender": {"name": settings.BREVO_SENDER_NAME, "email": settings.BREVO_SENDER_EMAIL},
                 "to": [{"email": recipient}],
-                "subject": "Your Rokto Dorkar verification code",
+                "subject": subject,
                 "htmlContent": (
                     "<div style='font-family:Arial,sans-serif;max-width:520px;margin:auto'>"
                     "<h2 style='color:#b71c1c'>Rokto Dorkar</h2>"
-                    "<p>Use this code to verify your email address:</p>"
+                    f"<p>Use this code to {purpose}:</p>"
                     f"<p style='font-size:32px;font-weight:bold;letter-spacing:8px'>{code}</p>"
                     f"<p>This code expires in {settings.OTP_EXPIRY_MINUTES} minutes.</p>"
                     "<p>If you did not request this code, you can ignore this email.</p></div>"

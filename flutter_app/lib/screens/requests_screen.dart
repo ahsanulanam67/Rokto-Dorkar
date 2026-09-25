@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../core/constants.dart';
+import '../core/theme.dart';
 import '../models/blood_request.dart';
 import '../services/api_service.dart';
 
@@ -102,91 +103,8 @@ class _RequestsScreenState extends State<RequestsScreen> {
                 sliver: SliverList.separated(
                   itemCount: _items.length,
                   separatorBuilder: (_, _) => const SizedBox(height: 10),
-                  itemBuilder: (_, index) {
-                    final item = _items[index];
-                    return Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                CircleAvatar(
-                                  child: Text(
-                                    item.bloodGroup,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        item.patientName,
-                                        style: const TextStyle(
-                                          fontSize: 17,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      Text(
-                                        '${item.units} unit${item.units == 1 ? '' : 's'} • ${DateFormat.yMMMd().format(item.neededDate)}',
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Chip(label: Text(item.status)),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-                            Text(
-                              item.hospital,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            Text(item.location),
-                            if (item.notes.isNotEmpty)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 6),
-                                child: Text(item.notes),
-                              ),
-                            const SizedBox(height: 12),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: FilledButton.tonalIcon(
-                                    onPressed: () => launchUrl(
-                                      Uri(
-                                        scheme: 'tel',
-                                        path: item.contactNumber,
-                                      ),
-                                    ),
-                                    icon: const Icon(Icons.call),
-                                    label: const Text('Contact'),
-                                  ),
-                                ),
-                                if ((item.isOwner || item.canModerate) &&
-                                    item.status == 'open') ...[
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: OutlinedButton(
-                                      onPressed: () => _fulfill(item),
-                                      child: const Text('Mark fulfilled'),
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
+                  itemBuilder: (_, index) =>
+                      _RequestCard(item: _items[index], onFulfill: _fulfill),
                 ),
               ),
           ],
@@ -382,4 +300,215 @@ class _RequestFormState extends State<_RequestForm> {
       ),
     ),
   );
+}
+
+class _RequestCard extends StatelessWidget {
+  const _RequestCard({required this.item, required this.onFulfill});
+  final BloodRequest item;
+  final Future<void> Function(BloodRequest) onFulfill;
+
+  // today = critical (red), tomorrow = urgent (orange), later = normal
+  _UrgencyLevel get _urgency {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final needed = DateTime(item.neededDate.year, item.neededDate.month, item.neededDate.day);
+    final diff = needed.difference(today).inDays;
+    if (diff <= 0) return _UrgencyLevel.critical;
+    if (diff == 1) return _UrgencyLevel.urgent;
+    return _UrgencyLevel.normal;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final u = _urgency;
+    final isFulfilled = item.status == 'fulfilled';
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border(
+          left: BorderSide(color: u.accentColor, width: 4),
+          top: BorderSide(color: const Color(0xFFF0DADA)),
+          right: BorderSide(color: const Color(0xFFF0DADA)),
+          bottom: BorderSide(color: const Color(0xFFF0DADA)),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Blood group badge
+                Container(
+                  width: 52, height: 52,
+                  decoration: BoxDecoration(
+                    gradient: isFulfilled
+                        ? const LinearGradient(colors: [Color(0xFF9E9E9E), Color(0xFF757575)])
+                        : AppTheme.gradientHeader,
+                    borderRadius: BorderRadius.circular(13),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    item.bloodGroup,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 15,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.patientName,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        '${item.units} unit${item.units == 1 ? '' : 's'}  ·  ${item.hospital}',
+                        style: const TextStyle(
+                          color: AppTheme.muted,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Status + urgency badges
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    if (!isFulfilled)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: u.badgeBg,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          u.label,
+                          style: TextStyle(
+                            color: u.accentColor,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      )
+                    else
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE8F5E9),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Text(
+                          'Fulfilled',
+                          style: TextStyle(
+                            color: Color(0xFF2E7D32),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            // Location + date row
+            Row(
+              children: [
+                const Icon(Icons.location_on_outlined, size: 14, color: AppTheme.muted),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    item.location,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: AppTheme.muted, fontSize: 13),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Icon(Icons.calendar_today_outlined, size: 13, color: AppTheme.muted),
+                const SizedBox(width: 4),
+                Text(
+                  DateFormat.MMMd().format(item.neededDate),
+                  style: TextStyle(
+                    color: u.accentColor,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+            if (item.notes.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                item.notes,
+                style: const TextStyle(color: AppTheme.muted, fontSize: 13),
+              ),
+            ],
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: () => launchUrl(Uri(scheme: 'tel', path: item.contactNumber)),
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size.fromHeight(44),
+                      backgroundColor: isFulfilled
+                          ? const Color(0xFF9E9E9E)
+                          : AppTheme.red,
+                    ),
+                    icon: const Icon(Icons.call_rounded, size: 18),
+                    label: const Text('Contact'),
+                  ),
+                ),
+                if ((item.isOwner || item.canModerate) && item.status == 'open') ...[
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => onFulfill(item),
+                      child: const Text('Mark fulfilled'),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+enum _UrgencyLevel { critical, urgent, normal }
+
+extension _UrgencyStyle on _UrgencyLevel {
+  Color get accentColor => switch (this) {
+    _UrgencyLevel.critical => const Color(0xFFC62828),
+    _UrgencyLevel.urgent   => const Color(0xFFE65100),
+    _UrgencyLevel.normal   => const Color(0xFF1565C0),
+  };
+  Color get badgeBg => switch (this) {
+    _UrgencyLevel.critical => const Color(0xFFFFEBEE),
+    _UrgencyLevel.urgent   => const Color(0xFFFFF3E0),
+    _UrgencyLevel.normal   => const Color(0xFFE3F2FD),
+  };
+  String get label => switch (this) {
+    _UrgencyLevel.critical => 'Critical',
+    _UrgencyLevel.urgent   => 'Urgent',
+    _UrgencyLevel.normal   => 'Open',
+  };
 }

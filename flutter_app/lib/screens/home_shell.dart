@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/theme.dart';
 import 'about_screen.dart';
 import 'donors_screen.dart';
 import 'management_screen.dart';
@@ -33,9 +34,19 @@ class _HomeShellState extends State<HomeShell> {
       selectedIndex: _index,
       onDestinationSelected: (value) => setState(() => _index = value),
       labelType: NavigationRailLabelType.all,
-      leading: const Padding(
-        padding: EdgeInsets.all(12),
-        child: Icon(Icons.bloodtype_rounded, size: 42),
+      leading: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: AppTheme.gradientHeader,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: const Icon(
+            Icons.bloodtype_rounded,
+            color: Colors.white,
+            size: 26,
+          ),
+        ),
       ),
       destinations: [
         const NavigationRailDestination(
@@ -64,14 +75,36 @@ class _HomeShellState extends State<HomeShell> {
     );
     return Scaffold(
       appBar: AppBar(
-        title: const Row(
+        title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.bloodtype_rounded),
-            SizedBox(width: 8),
-            Text('Rokto Dorkar', style: TextStyle(fontWeight: FontWeight.w800)),
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                gradient: AppTheme.gradientHeader,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Icons.bloodtype_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 10),
+            const Text('Rokto Dorkar'),
           ],
         ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: IconButton(
+              icon: const Icon(Icons.notifications_none_rounded),
+              onPressed: () {},
+              tooltip: 'Notifications',
+            ),
+          ),
+        ],
       ),
       body: Row(
         children: [

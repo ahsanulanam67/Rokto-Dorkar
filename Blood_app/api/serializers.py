@@ -6,7 +6,12 @@ from rest_framework import serializers
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
-from Accounts.services import OTPError, issue_email_otp, verify_email_otp
+from Accounts.services import (
+    OTPError,
+    issue_email_otp,
+    reset_password_with_otp,
+    verify_email_otp,
+)
 from Blood_app.country import country_data
 from Blood_app.duplicates import create_duplicate_alerts
 from Blood_app.models import BloodRequest, DuplicateDonorAlert, Person
@@ -127,6 +132,49 @@ class ResendOTPSerializer(serializers.Serializer):
             raise serializers.ValidationError("This email is already verified.")
         self.user = user
         return value.lower()
+
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+    def validate_email(self, value):
+        self.user = User.objects.filter(
+            email__iexact=value,
+            email_verified=True,
+            is_active=True,
+        ).first()
+        return value.lower()
+
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    otp = serializers.RegexField(r"^\d{6}$")
+    new_password = serializers.CharField(write_only=True)
+    confirm_password = serializers.CharField(write_only=True)
+
+    def validate(self, attrs):
+        if attrs["new_password"] != attrs.pop("confirm_password"):
+            raise serializers.ValidationError({"confirm_password": "Passwords do not match."})
+        user = User.objects.filter(
+            email__iexact=attrs["email"],
+            email_verified=True,
+            is_active=True,
+        ).first()
+        if user is None:
+            raise serializers.ValidationError({"otp": "The password reset code is invalid or expired."})
+        validate_password(attrs["new_password"], user=user)
+        attrs["user"] = user
+        return attrs
+
+    def save(self):
+        try:
+            reset_password_with_otp(
+                self.validated_data["user"],
+                self.validated_data["otp"],
+                self.validated_data["new_password"],
+            )
+        except OTPError as exc:
+            raise serializers.ValidationError({"otp": str(exc)}) from exc
 
 
 class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):

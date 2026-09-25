@@ -64,6 +64,62 @@ class ApiTests(APITestCase):
         self.assertTrue(user.person.is_available)
         self.assertEqual(DuplicateDonorAlert.objects.filter(registered_donor=user.person).count(), 1)
 
+    @override_settings(DEBUG=True, BREVO_API_KEY="")
+    def test_password_reset_with_email_otp(self):
+        self.client.force_authenticate(user=None)
+        login = self.client.post(
+            "/api/v1/auth/login/",
+            {"email": self.user.email, "password": "StrongPass!42"},
+        )
+        self.assertEqual(login.status_code, 200)
+        previous_access = login.data["access"]
+
+        response = self.client.post(
+            "/api/v1/auth/password-reset/request/",
+            {"email": self.user.email},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertRegex(response.data["debug_otp"], r"^\d{6}$")
+
+        response = self.client.post(
+            "/api/v1/auth/password-reset/confirm/",
+            {
+                "email": self.user.email,
+                "otp": response.data["debug_otp"],
+                "new_password": "NewStrongPass!84",
+                "confirm_password": "NewStrongPass!84",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {previous_access}")
+        self.assertEqual(self.client.get("/api/v1/profile/").status_code, 401)
+        self.client.credentials()
+        self.assertEqual(
+            self.client.post(
+                "/api/v1/auth/login/",
+                {"email": self.user.email, "password": "StrongPass!42"},
+            ).status_code,
+            401,
+        )
+        self.assertEqual(
+            self.client.post(
+                "/api/v1/auth/login/",
+                {"email": self.user.email, "password": "NewStrongPass!84"},
+            ).status_code,
+            200,
+        )
+
+    @override_settings(DEBUG=True, BREVO_API_KEY="")
+    def test_password_reset_request_does_not_reveal_unknown_email(self):
+        self.client.force_authenticate(user=None)
+        response = self.client.post(
+            "/api/v1/auth/password-reset/request/",
+            {"email": "unknown@example.com"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("debug_otp", response.data)
+
     def test_admin_can_promote_moderator_and_resolve_manual_duplicate(self):
         admin = get_user_model().objects.create_superuser(
             email="admin@example.com", password="AdminStrong!42",

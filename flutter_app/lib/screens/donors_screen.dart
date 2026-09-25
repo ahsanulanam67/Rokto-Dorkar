@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../core/constants.dart';
+import '../core/theme.dart';
 import '../models/donor.dart';
 import '../services/api_service.dart';
 import '../services/auth_state.dart';
@@ -231,6 +232,35 @@ class _DonorsScreenState extends State<DonorsScreen> {
             ),
           ),
         ),
+        if (!_loading && _error == null)
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+            sliver: SliverToBoxAdapter(
+              child: Row(
+                children: [
+                  Text(
+                    _donors.isEmpty
+                        ? 'No donors found'
+                        : '${_donors.length} donor${_donors.length == 1 ? '' : 's'} found',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: _donors.isEmpty
+                          ? Colors.grey
+                          : AppTheme.red,
+                    ),
+                  ),
+                  if (_filters['eligible_only'] != 'false') ...[
+                    const SizedBox(width: 6),
+                    const Text(
+                      '· eligible only',
+                      style: TextStyle(fontSize: 12, color: AppTheme.muted),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
         if (_hasVisibleFilters)
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(16, 2, 16, 8),
